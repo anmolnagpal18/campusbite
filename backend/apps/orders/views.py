@@ -362,7 +362,17 @@ class KitchenViewSet(viewsets.ViewSet):
             
         # Dispatch notification asynchronously (Outside DB lock for performance)
         from apps.communication.services import MessageDispatcher
+        from apps.notifications.services import RealtimePublisher
+        
         MessageDispatcher.dispatch_status_update(booking)
+        
+        RealtimePublisher.publish_to_user(
+            user_id=booking.student.id,
+            event_type=new_status,
+            message=f"Your order #{booking.booking_reference[-5:]} is now {new_status}.",
+            reference_type="PreBooking",
+            reference_id=str(booking.id)
+        )
             
         return Response({"message": "Status updated"}, status=status.HTTP_200_OK)
 

@@ -2,7 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Phase 9] - AI Chatbot & Smart Food Recommendations
+## [Phase 10] - Real-Time Notifications & Live Updates
+### Backend
+- Migrated server infrastructure from purely WSGI to ASGI utilizing Daphne, Django Channels, and `channels_redis`.
+- Built `apps.notifications` to persist WebSocket alerts via `Notification` and `NotificationPreference` databases.
+- Deployed a centralized Event Bus (`RealtimePublisher`) decoupled from consumers, allowing services (like Order Management) to push synchronous JSON payloads that are instantly bridged into asynchronous WebSocket broadcasts via Redis channel layers.
+
+### Frontend
+- Developed robust `useWebSocket.js` hook with exponential backoff and JWT authentication via query parameters.
+- Implemented `NotificationCenter.jsx` to render live connectivity status and trigger native Toasts immediately upon receiving server events (e.g. `KITCHEN_READY`).
+
+
 ### Backend
 - Developed `apps.ai` module utilizing LangChain and Google Gemini APIs to construct a conversational Chatbot.
 - Configured a `ContextTools` library allowing the LLM to execute RAG (Retrieval-Augmented Generation) against real-time `PreBooking` arrays and `MenuItem` databases securely.
