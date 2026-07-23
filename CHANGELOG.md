@@ -2,7 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Phase 6] - QR Code Pickup Verification System
+## [Phase 7] - Order Management & Live Kitchen Tracking
+### Backend
+- Upgraded `orders.PreBooking` model to handle kitchen state variables (`queue_position`, `priority`, `estimated_preparation_time`, `actual_preparation_start`).
+- Developed `OrderStatusLog` model to enforce a strict immutable audit trail of all state machine transitions.
+- Developed `/api/v1/orders/kitchen/` APIs wrapped in `select_for_update()` to natively compute wait-times and strictly reject illegal backwards state transitions (e.g. `READY` to `PREPARING`).
+
+### Frontend
+- Built `KitchenQueuePage.jsx` granting vendors a dynamic list of active orders with 1-click status bumps (`Start Preparing`, `Mark Ready`).
+- Built `StudentOrderTrackingPage.jsx` granting students a real-time progress timeline detailing their Queue Position and computed `Estimated Ready Time`.
+
+
 ### Backend
 - Upgraded `orders.PreBooking` model to handle native QR lifecycles (`qr_token`, `qr_status`, `qr_expires_at`).
 - Built `PickupLog` model to enforce a strict immutable audit trail of all physical order handoffs.

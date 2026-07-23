@@ -66,3 +66,15 @@ class ManualVerifySerializer(serializers.Serializer):
     secondary_identifier = serializers.CharField(max_length=50, help_text="Last 4 digits of phone or specific order ID")
     reason = serializers.CharField(max_length=255)
 
+class OrderStatusUpdateSerializer(serializers.Serializer):
+    new_status = serializers.ChoiceField(choices=PreBooking.BookingStatus.choices)
+    transition_reason = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    
+class PriorityUpdateSerializer(serializers.Serializer):
+    priority = serializers.ChoiceField(choices=PreBooking.Priority.choices)
+
+class AssignStaffSerializer(serializers.Serializer):
+    staff_id = serializers.IntegerField()
+    staff_notes = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+

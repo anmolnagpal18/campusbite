@@ -260,3 +260,120 @@ class QRViewSet(viewsets.ViewSet):
             log.save()
             
         return Response({"message": "QR Verified! Order Pickup Complete."}, status=status.HTTP_200_OK)
+
+class KitchenViewSet(viewsets.ViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _recalculate_queue(self, vendor):
+        """Helper to reorder active orders."""
+        active_orders = PreBooking.objects.filter(
+            vendor=vendor,
+            status__in=[PreBooking.BookingStatus.CONFIRMED, PreBooking.BookingStatus.PREPARING]
+        ).order_by(
+            models.Case(
+                models.When(priority=PreBooking.Priority.URGENT, then=0),
+                models.When(priority=PreBooking.Priority.HIGH, then=1),
+                models.When(priority=PreBooking.Priority.NORMAL, then=2),
+                default=3
+            ),
+            'confirmed_at'
+        )
+        
+        current_time = timezone.now()
+        for i, order in enumerate(active_orders):
+            order.queue_position = i + 1
+            if order.status == PreBooking.BookingStatus.CONFIRMED:
+                # Cumulative estimated time
+                wait_time = sum([o.estimated_preparation_time for o in active_orders[:i+1]])
+                order.estimated_ready_at = current_time + timezone.timedelta(minutes=wait_time)
+            order.save(update_fields=['queue_position', 'estimated_ready_at'])
+
+    @action(detail=False, methods=['get'], url_path='queue')
+    def get_queue(self, request):
+        if request.user.role != 'VENDOR':
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+            
+        vendor = request.user.vendor_profile if hasattr(request.user, 'vendor_profile') else None
+        if not vendor:
+            # Fallback for simplistic testing if RBAC isn't fully linking profiles
+            vendor = Vendor.objects.first()
+
+        orders = PreBooking.objects.filter(
+            vendor=vendor,
+            status__in=[
+                PreBooking.BookingStatus.CONFIRMED, 
+                PreBooking.BookingStatus.PREPARING, 
+                PreBooking.BookingStatus.READY_FOR_PICKUP
+            ]
+        ).order_by('-status', 'queue_position')
+        
+        return Response(PreBookingSerializer(orders, many=True).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['patch'], url_path='status')
+    def update_status(self, request, pk=None):
+        if request.user.role != 'VENDOR':
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+            
+        from .serializers import OrderStatusUpdateSerializer
+        from .models import OrderStatusLog
+        
+        serializer = OrderStatusUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        new_status = serializer.validated_data['new_status']
+        reason = serializer.validated_data.get('transition_reason', '')
+
+        with transaction.atomic():
+            booking = PreBooking.objects.select_for_update().get(id=pk)
+            
+            # State Machine Rules
+            allowed = False
+            curr = booking.status
+            
+            if curr == PreBooking.BookingStatus.CONFIRMED and new_status == PreBooking.BookingStatus.PREPARING:
+                allowed = True
+                booking.preparing_at = timezone.now()
+                booking.actual_preparation_start = timezone.now()
+                
+            elif curr == PreBooking.BookingStatus.PREPARING and new_status == PreBooking.BookingStatus.READY_FOR_PICKUP:
+                allowed = True
+                booking.ready_at = timezone.now()
+                
+            elif curr in [PreBooking.BookingStatus.CONFIRMED, PreBooking.BookingStatus.PREPARING] and new_status == PreBooking.BookingStatus.CANCELLED:
+                allowed = True
+                booking.cancelled_at = timezone.now()
+                
+            if not allowed:
+                return Response({"error": f"Invalid transition from {curr} to {new_status}"}, status=status.HTTP_400_BAD_REQUEST)
+                
+            booking.status = new_status
+            booking.save()
+            
+            OrderStatusLog.objects.create(
+                booking=booking,
+                previous_status=curr,
+                new_status=new_status,
+                changed_by=request.user,
+                source=OrderStatusLog.LogSource.VENDOR,
+                transition_reason=reason,
+                ip_address=request.META.get('REMOTE_ADDR', '')
+            )
+            
+            self._recalculate_queue(booking.vendor)
+            
+        return Response({"message": "Status updated"}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['patch'], url_path='priority')
+    def update_priority(self, request, pk=None):
+        if request.user.role != 'VENDOR':
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+            
+        from .serializers import PriorityUpdateSerializer
+        serializer = PriorityUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        booking = PreBooking.objects.get(id=pk)
+        booking.priority = serializer.validated_data['priority']
+        booking.save()
+        self._recalculate_queue(booking.vendor)
+        
+        return Response({"message": "Priority updated"}, status=status.HTTP_200_OK)

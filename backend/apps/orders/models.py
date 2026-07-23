@@ -98,6 +98,11 @@ class PreBooking(BaseModel):
 
     notes = models.TextField(blank=True, null=True)
 
+    class Priority(models.TextChoices):
+        NORMAL = 'NORMAL', 'Normal'
+        HIGH = 'HIGH', 'High'
+        URGENT = 'URGENT', 'Urgent'
+
     # QR & Pickup logic
     qr_token = models.CharField(max_length=255, blank=True, null=True, unique=True)
     qr_generated_at = models.DateTimeField(null=True, blank=True)
@@ -107,6 +112,20 @@ class PreBooking(BaseModel):
     pickup_verified_at = models.DateTimeField(null=True, blank=True)
     picked_up_by_vendor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_pickups')
     pickup_notes = models.TextField(blank=True, null=True)
+
+    # Kitchen & Tracking
+    estimated_preparation_time = models.IntegerField(default=15, help_text="Minutes")
+    actual_preparation_start = models.DateTimeField(null=True, blank=True)
+    estimated_ready_at = models.DateTimeField(null=True, blank=True)
+    picked_up_at = models.DateTimeField(null=True, blank=True) # Secondary alias for pickup_verified_at
+    
+    priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.NORMAL)
+    queue_position = models.IntegerField(default=0)
+    
+    assigned_staff = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_orders')
+    assigned_at = models.DateTimeField(null=True, blank=True)
+    staff_notes = models.TextField(blank=True, null=True)
+    kitchen_notes = models.TextField(blank=True, null=True)
 
     # Lifecycle Timestamps
     confirmed_at = models.DateTimeField(null=True, blank=True)
@@ -143,6 +162,25 @@ class PickupLog(BaseModel):
 
     def __str__(self):
         return f"{self.booking.booking_reference} - {self.result}"
+
+class OrderStatusLog(BaseModel):
+    class LogSource(models.TextChoices):
+        SYSTEM = 'SYSTEM', 'System'
+        VENDOR = 'VENDOR', 'Vendor'
+        ADMIN = 'ADMIN', 'Admin'
+
+    booking = models.ForeignKey(PreBooking, on_delete=models.CASCADE, related_name='status_logs')
+    previous_status = models.CharField(max_length=20)
+    new_status = models.CharField(max_length=20)
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    source = models.CharField(max_length=20, choices=LogSource.choices, default=LogSource.SYSTEM)
+    transition_reason = models.TextField(blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    device_info = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.booking.booking_reference} ({self.previous_status} -> {self.new_status})"
 
 class BookingItem(BaseModel):
     """Immutable snapshot of the ordered items."""
