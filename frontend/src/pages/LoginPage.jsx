@@ -1,28 +1,46 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
-const schema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
-});
-
 const LoginPage = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm({
-    resolver: zodResolver(schema)
-  });
   const { login } = useAuth();
   const navigate = useNavigate();
+  
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  const onSubmit = async (data) => {
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.email) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Invalid email format";
+    }
+    
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (errors[e.target.name]) {
+      setErrors({ ...errors, [e.target.name]: '' });
+    }
+  };
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+    
     setLoading(true);
     try {
-      const data = await login(data);
+      const data = await login(formData);
       toast.success('Login successful!');
       if (data.role === 'STUDENT') navigate('/student/dashboard');
       else if (data.role === 'VENDOR') navigate('/vendor/dashboard');
@@ -42,25 +60,29 @@ const LoginPage = () => {
         <h2 className="text-3xl font-bold text-center text-slate-900 dark:text-white mb-2">Welcome Back</h2>
         <p className="text-center text-slate-500 dark:text-slate-400 mb-8">Sign in to your account</p>
         
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={onSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
             <input 
-              {...register('email')} 
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
               className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white outline-none"
               placeholder="you@university.edu"
             />
-            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password</label>
             <input 
+              name="password"
               type="password"
-              {...register('password')} 
+              value={formData.password}
+              onChange={handleChange}
               className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white outline-none"
               placeholder="••••••••"
             />
-            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
+            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
           </div>
           <button 
             type="submit" 

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Refactor] - Remove Frontend Form/State Libraries
+- Uninstalled `@tanstack/react-query`, `react-hook-form`, `zod`, and `@hookform/resolvers`.
+- Refactored `App.jsx` to remove all instances of `QueryClient` and `QueryClientProvider`.
+- Refactored `LoginPage.jsx` to use standard React `useState` and native form validation.
+- Refactored `RegisterPage.jsx` to use standard React `useState` and native form validation (with password matching).
+- Verified build and routing still work correctly via Axios interceptors.
+
 ## [Phase 1] - Initial SaaS Foundation & Architecture
 
 ### Added
