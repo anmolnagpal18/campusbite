@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'apps.orders',
     'apps.payments',
     'apps.communication',
+    'apps.ai',
     'django_filters',
 ]
 

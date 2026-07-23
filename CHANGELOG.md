@@ -2,7 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Phase 8] - WhatsApp Business API & Telegram Integration
+## [Phase 9] - AI Chatbot & Smart Food Recommendations
+### Backend
+- Developed `apps.ai` module utilizing LangChain and Google Gemini APIs to construct a conversational Chatbot.
+- Configured a `ContextTools` library allowing the LLM to execute RAG (Retrieval-Augmented Generation) against real-time `PreBooking` arrays and `MenuItem` databases securely.
+- Built explicit `Conversation` and `ConversationMessage` SQL stores with `token_count` and `latency` heuristics for audit and cost analysis.
+
+### Frontend
+- Created `AIChatPage.jsx` granting an uninterrupted chat interface capable of rendering real-time AI context with smooth scrolling and typing indicators.
+
+
 ### Backend
 - Developed `apps.communication` app containing `CommunicationChannel` and `MessageLog` databases for highly accurate, stateful outbound message tracking.
 - Implemented decoupled `MessageDispatcher` service that hooks into the Order State Machine to fire automated SMS/Telegram templates upon status updates (e.g. `CONFIRMED`, `PREPARING`, `READY`).
