@@ -1,0 +1,23 @@
+import { Outlet } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
+const VendorLayout = () => {
+  const { user, logout } = useAuth();
+  
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
+      <nav className="w-full bg-orange-600 dark:bg-orange-800 shadow p-4 flex justify-between items-center text-white">
+        <div className="text-xl font-bold">Vendor Portal</div>
+        <div className="flex gap-4 items-center">
+          <span>{user?.first_name}'s Store</span>
+          <button onClick={logout} className="hover:underline">Logout</button>
+        </div>
+      </nav>
+      <div className="flex-1 p-6 max-w-7xl mx-auto w-full">
+        <Outlet />
+      </div>
+    </div>
+  );
+};
+
+export default VendorLayout;

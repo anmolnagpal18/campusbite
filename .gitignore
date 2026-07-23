@@ -1,0 +1,16 @@
+# IDE
+.vscode/
+.idea/
+
+# Backend
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.env
+backend/db.sqlite3
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local

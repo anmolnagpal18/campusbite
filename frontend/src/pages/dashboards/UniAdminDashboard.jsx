@@ -1,0 +1,12 @@
+import { useAuth } from '../../contexts/AuthContext';
+
+const UniAdminDashboard = () => {
+  const { user } = useAuth();
+  return (
+    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+      <h2 className="text-2xl font-bold mb-4">University Admin Overview</h2>
+      <p className="text-slate-600 dark:text-slate-400">Welcome, {user?.first_name}. Here you can manage blocks, approve vendors, and view university analytics.</p>
+    </div>
+  );
+};
+export default UniAdminDashboard;
