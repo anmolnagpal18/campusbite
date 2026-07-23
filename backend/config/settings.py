@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'apps.communication',
     'apps.ai',
     'apps.notifications',
+    'apps.analytics',
     'channels',
     'django_filters',
 ]

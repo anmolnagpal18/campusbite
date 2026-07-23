@@ -2,7 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Phase 10] - Real-Time Notifications & Live Updates
+## [Phase 11] - Analytics & Business Intelligence
+### Backend
+- Architected the `apps.analytics` module which decouples operational databases from dashboard rendering via precomputed `AnalyticsSnapshot` and `VendorAnalytics` tables.
+- Developed `MetricsCalculator` to safely compute daily aggregates without exposing raw unencrypted student order payloads.
+- Integrated `AIInsightGenerator` that passes JSON aggregates to the Gemini API, producing deterministic, concise natural-language business insights while strictly forbidding LLM hallucination of raw metrics.
+
+### Frontend
+- Developed `AnalyticsDashboard.jsx` leveraging `recharts` for highly interactive, dark-mode compatible Line, Bar, and Pie Charts representing operational flows, along with an AI Insights Side Panel.
+
+
 ### Backend
 - Migrated server infrastructure from purely WSGI to ASGI utilizing Daphne, Django Channels, and `channels_redis`.
 - Built `apps.notifications` to persist WebSocket alerts via `Notification` and `NotificationPreference` databases.
