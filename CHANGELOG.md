@@ -2,7 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Phase 7] - Order Management & Live Kitchen Tracking
+## [Phase 8] - WhatsApp Business API & Telegram Integration
+### Backend
+- Developed `apps.communication` app containing `CommunicationChannel` and `MessageLog` databases for highly accurate, stateful outbound message tracking.
+- Implemented decoupled `MessageDispatcher` service that hooks into the Order State Machine to fire automated SMS/Telegram templates upon status updates (e.g. `CONFIRMED`, `PREPARING`, `READY`).
+- Constructed webhook processors for both Meta (WhatsApp) and Telegram.
+- Integrated stringent `X-Hub-Signature-256` HMAC validation for incoming Meta webhooks to strictly reject replay and spoofing attacks.
+
+### Frontend
+- Built `CommunicationSettingsPage.jsx` providing a unified dashboard for users to attach their WhatsApp Phone Numbers or Telegram Chat IDs and opt-in to system notifications.
+
+
 ### Backend
 - Upgraded `orders.PreBooking` model to handle kitchen state variables (`queue_position`, `priority`, `estimated_preparation_time`, `actual_preparation_start`).
 - Developed `OrderStatusLog` model to enforce a strict immutable audit trail of all state machine transitions.

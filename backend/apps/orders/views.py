@@ -360,6 +360,10 @@ class KitchenViewSet(viewsets.ViewSet):
             
             self._recalculate_queue(booking.vendor)
             
+        # Dispatch notification asynchronously (Outside DB lock for performance)
+        from apps.communication.services import MessageDispatcher
+        MessageDispatcher.dispatch_status_update(booking)
+            
         return Response({"message": "Status updated"}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['patch'], url_path='priority')
