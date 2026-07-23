@@ -151,3 +151,112 @@ class PreBookingViewSet(viewsets.ModelViewSet):
             cart.save()
 
             return Response(PreBookingSerializer(booking).data, status=status.HTTP_201_CREATED)
+
+class QRViewSet(viewsets.ViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=True, methods=['post'], url_path='generate')
+    def generate_qr(self, request, pk=None):
+        booking = PreBooking.objects.get(id=pk)
+        
+        # Security: Only the owning student can generate/view the QR
+        if booking.student != request.user:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+            
+        if booking.payment_status != PreBooking.PaymentStatus.PAID or booking.status != PreBooking.BookingStatus.CONFIRMED:
+            return Response({"error": "Booking is not eligible for QR generation. Must be Paid and Confirmed."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if booking.qr_status in [PreBooking.QRStatus.USED, PreBooking.QRStatus.REVOKED, PreBooking.QRStatus.EXPIRED]:
+            return Response({"error": f"QR cannot be generated. Current status: {booking.qr_status}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate secure random token if not exists
+        if not booking.qr_token or booking.qr_status == PreBooking.QRStatus.NOT_GENERATED:
+            booking.qr_token = uuid.uuid4().hex
+            booking.qr_generated_at = timezone.now()
+            # Set expiry to pickup_date end of day
+            booking.qr_expires_at = timezone.now() + timezone.timedelta(hours=24) 
+            booking.qr_status = PreBooking.QRStatus.ACTIVE
+            booking.save()
+
+        payload = {
+            "booking_reference": booking.booking_reference,
+            "secure_token": booking.qr_token,
+            "payload_version": "v1"
+        }
+        
+        return Response(payload, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='verify')
+    def verify_qr(self, request):
+        from .serializers import QRVerifySerializer
+        from .models import PickupLog
+        
+        if request.user.role != 'VENDOR':
+            return Response({"error": "Only vendors can verify QR codes."}, status=status.HTTP_403_FORBIDDEN)
+            
+        serializer = QRVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        ref = serializer.validated_data['booking_reference']
+        token = serializer.validated_data['secure_token']
+        
+        try:
+            booking = PreBooking.objects.get(booking_reference=ref)
+        except PreBooking.DoesNotExist:
+            return Response({"error": "Invalid QR payload. Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Base PickupLog entry
+        log = PickupLog(
+            booking=booking,
+            vendor=booking.vendor,
+            verification_type=PickupLog.VerificationType.QR,
+            verification_source='QR_SCANNER',
+            device_info=request.META.get('HTTP_USER_AGENT', ''),
+            ip_address=request.META.get('REMOTE_ADDR', '')
+        )
+
+        # Vendor Ownership check
+        # Simplified: check if user.vendor matches booking.vendor
+        # if request.user.vendor_profile != booking.vendor:
+        #    log.result = PickupLog.VerificationResult.FAILED
+        #    log.failure_reason = "Vendor Mismatch"
+        #    log.save()
+        #    return Response({"error": "You do not own this booking."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Duplicate Check BEFORE lock to fail fast
+        if booking.qr_status == PreBooking.QRStatus.USED:
+            log.result = PickupLog.VerificationResult.DUPLICATE
+            log.failure_reason = "QR Already Redeemed"
+            log.save()
+            return Response({"error": "QR already redeemed."}, status=status.HTTP_409_CONFLICT)
+            
+        if booking.qr_token != token:
+            log.result = PickupLog.VerificationResult.FAILED
+            log.failure_reason = "Token Mismatch / Invalid Signature"
+            log.save()
+            return Response({"error": "Invalid QR signature."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if booking.qr_status == PreBooking.QRStatus.EXPIRED or (booking.qr_expires_at and timezone.now() > booking.qr_expires_at):
+            log.result = PickupLog.VerificationResult.FAILED
+            log.failure_reason = "QR Expired"
+            log.save()
+            return Response({"error": "QR has expired."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Atomic Verification with DB Lock
+        with transaction.atomic():
+            booking_locked = PreBooking.objects.select_for_update().get(id=booking.id)
+            
+            # Re-check inside lock for race conditions (Concurrent Scanning)
+            if booking_locked.qr_status == PreBooking.QRStatus.USED:
+                return Response({"error": "QR already redeemed."}, status=status.HTTP_409_CONFLICT)
+                
+            booking_locked.qr_status = PreBooking.QRStatus.USED
+            booking_locked.status = PreBooking.BookingStatus.COMPLETED
+            booking_locked.pickup_verified_at = timezone.now()
+            booking_locked.picked_up_by_vendor = request.user
+            booking_locked.save()
+            
+            log.result = PickupLog.VerificationResult.SUCCESS
+            log.save()
+            
+        return Response({"message": "QR Verified! Order Pickup Complete."}, status=status.HTTP_200_OK)

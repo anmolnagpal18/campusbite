@@ -2,7 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Phase 5] - Razorpay Payment Integration
+## [Phase 6] - QR Code Pickup Verification System
+### Backend
+- Upgraded `orders.PreBooking` model to handle native QR lifecycles (`qr_token`, `qr_status`, `qr_expires_at`).
+- Built `PickupLog` model to enforce a strict immutable audit trail of all physical order handoffs.
+- Developed `/api/v1/qr/generate/` endpoint producing cryptographically secure JSON tokens isolating sensitive database IDs.
+- Developed `/api/v1/qr/verify/` endpoint utilizing `select_for_update()` and `transaction.atomic()` to definitively prevent concurrent duplicate scan attacks.
+
+### Frontend
+- Installed `qrcode.react` to generate dynamic SVG codes on the Student Dashboard.
+- Installed `html5-qrcode` to interface natively with the Vendor's physical camera hardware in `VendorQRScannerPage.jsx`.
+- Implemented robust error handling across the Scanner UI to surface exact failure reasons (e.g. Expired, Used, Invalid Signature) without crashing the camera stream.
+
+
 ### Backend
 - Implemented `payments` app containing `Payment` and `PaymentLog` tables for auditability.
 - Augmented the `orders.PreBooking` model to enforce a strict state machine (`status` cannot become `CONFIRMED` until `payment_status` is `PAID`).

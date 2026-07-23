@@ -51,5 +51,18 @@ class PreBookingSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = (
             'booking_reference', 'subtotal', 'total', 'status', 
-            'confirmed_at', 'preparing_at', 'ready_at', 'completed_at', 'cancelled_at'
+            'confirmed_at', 'preparing_at', 'ready_at', 'completed_at', 'cancelled_at',
+            'qr_token', 'qr_generated_at', 'qr_expires_at', 'qr_status',
+            'pickup_verified_at', 'picked_up_by_vendor'
         )
+
+class QRVerifySerializer(serializers.Serializer):
+    booking_reference = serializers.CharField(max_length=50)
+    secure_token = serializers.CharField(max_length=255)
+    payload_version = serializers.CharField(max_length=10, required=False)
+
+class ManualVerifySerializer(serializers.Serializer):
+    booking_reference = serializers.CharField(max_length=50)
+    secondary_identifier = serializers.CharField(max_length=50, help_text="Last 4 digits of phone or specific order ID")
+    reason = serializers.CharField(max_length=255)
+

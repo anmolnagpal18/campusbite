@@ -76,6 +76,14 @@ class PreBooking(BaseModel):
         FAILED = 'FAILED', 'Failed'
         REFUNDED = 'REFUNDED', 'Refunded'
 
+    class QRStatus(models.TextChoices):
+        NOT_GENERATED = 'NOT_GENERATED', 'Not Generated'
+        ACTIVE = 'ACTIVE', 'Active'
+        SCANNING = 'SCANNING', 'Scanning'
+        USED = 'USED', 'Used'
+        EXPIRED = 'EXPIRED', 'Expired'
+        REVOKED = 'REVOKED', 'Revoked'
+
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='bookings')
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='bookings')
     cart = models.OneToOneField(Cart, on_delete=models.SET_NULL, null=True, related_name='booking')
@@ -90,6 +98,16 @@ class PreBooking(BaseModel):
 
     notes = models.TextField(blank=True, null=True)
 
+    # QR & Pickup logic
+    qr_token = models.CharField(max_length=255, blank=True, null=True, unique=True)
+    qr_generated_at = models.DateTimeField(null=True, blank=True)
+    qr_expires_at = models.DateTimeField(null=True, blank=True)
+    qr_status = models.CharField(max_length=20, choices=QRStatus.choices, default=QRStatus.NOT_GENERATED)
+    
+    pickup_verified_at = models.DateTimeField(null=True, blank=True)
+    picked_up_by_vendor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_pickups')
+    pickup_notes = models.TextField(blank=True, null=True)
+
     # Lifecycle Timestamps
     confirmed_at = models.DateTimeField(null=True, blank=True)
     preparing_at = models.DateTimeField(null=True, blank=True)
@@ -102,6 +120,29 @@ class PreBooking(BaseModel):
 
     def __str__(self):
         return self.booking_reference
+
+class PickupLog(BaseModel):
+    class VerificationType(models.TextChoices):
+        QR = 'QR', 'QR Code'
+        MANUAL = 'MANUAL', 'Manual Entry'
+    
+    class VerificationResult(models.TextChoices):
+        SUCCESS = 'SUCCESS', 'Success'
+        FAILED = 'FAILED', 'Failed'
+        DUPLICATE = 'DUPLICATE', 'Duplicate'
+
+    booking = models.ForeignKey(PreBooking, on_delete=models.CASCADE, related_name='pickup_logs')
+    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='pickup_logs')
+    verification_type = models.CharField(max_length=20, choices=VerificationType.choices)
+    verification_source = models.CharField(max_length=100, blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    device_info = models.TextField(blank=True, null=True)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    result = models.CharField(max_length=20, choices=VerificationResult.choices)
+    failure_reason = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.booking.booking_reference} - {self.result}"
 
 class BookingItem(BaseModel):
     """Immutable snapshot of the ordered items."""
