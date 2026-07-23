@@ -2,7 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Phase 4] - Cart & Food Pre-Booking System
+## [Phase 5] - Razorpay Payment Integration
+### Backend
+- Implemented `payments` app containing `Payment` and `PaymentLog` tables for auditability.
+- Augmented the `orders.PreBooking` model to enforce a strict state machine (`status` cannot become `CONFIRMED` until `payment_status` is `PAID`).
+- Developed `create_order` API generating a secure server-side financial total, completely ignoring client-provided amounts.
+- Developed `verify_payment` API utilizing `hmac` SHA256 to cryptographically verify Razorpay signatures.
+- Built a fallback `RazorpayWebhookView` to guarantee booking confirmation even if the student closes the browser window prematurely.
+
+### Frontend
+- Scaffolded dynamic `useRazorpay` React hook for async script injection.
+- Developed `PaymentPage.jsx` providing a seamless bridge from the Checkout flow directly into the native Razorpay modal overlay.
+
+
 ### Backend
 - Implemented `orders` app with `Cart`, `CartItem`, `PickupSlot`, `PreBooking`, and `BookingItem`.
 - Developed robust transactional logic utilizing `select_for_update()` to absolutely prevent race conditions when securing limited Pickup Slot capacities.

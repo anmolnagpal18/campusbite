@@ -11,6 +11,7 @@ urlpatterns = [
     path('api/v1/', include('apps.vendors.urls')),
     path('api/v1/', include('apps.menus.urls')),
     path('api/v1/', include('apps.orders.urls')),
+    path('api/v1/payments/', include('apps.payments.urls')),
     
     # Swagger endpoints
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

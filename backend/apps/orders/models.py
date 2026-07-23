@@ -70,6 +70,12 @@ class PreBooking(BaseModel):
         CANCELLED = 'CANCELLED', 'Cancelled'
         EXPIRED = 'EXPIRED', 'Expired'
 
+    class PaymentStatus(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        PAID = 'PAID', 'Paid'
+        FAILED = 'FAILED', 'Failed'
+        REFUNDED = 'REFUNDED', 'Refunded'
+
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='bookings')
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='bookings')
     cart = models.OneToOneField(Cart, on_delete=models.SET_NULL, null=True, related_name='booking')
@@ -79,7 +85,9 @@ class PreBooking(BaseModel):
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
     total = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=BookingStatus.choices, default=BookingStatus.PENDING)
+    payment_status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
     booking_reference = models.CharField(max_length=50, unique=True)
+
     notes = models.TextField(blank=True, null=True)
 
     # Lifecycle Timestamps

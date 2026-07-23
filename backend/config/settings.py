@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'apps.vendors',
     'apps.menus',
     'apps.orders',
+    'apps.payments',
     'django_filters',
 ]
 
