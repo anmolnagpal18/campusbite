@@ -10,6 +10,7 @@ urlpatterns = [
     path('api/v1/', include('apps.universities.urls')),
     path('api/v1/', include('apps.vendors.urls')),
     path('api/v1/', include('apps.menus.urls')),
+    path('api/v1/', include('apps.orders.urls')),
     
     # Swagger endpoints
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

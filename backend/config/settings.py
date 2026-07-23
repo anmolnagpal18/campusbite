@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'apps.universities',
     'apps.vendors',
     'apps.menus',
+    'apps.orders',
     'django_filters',
 ]
 

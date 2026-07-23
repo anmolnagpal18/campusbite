@@ -2,7 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Phase 3] - Menu Management & Catalog System
+## [Phase 4] - Cart & Food Pre-Booking System
+### Backend
+- Implemented `orders` app with `Cart`, `CartItem`, `PickupSlot`, `PreBooking`, and `BookingItem`.
+- Developed robust transactional logic utilizing `select_for_update()` to absolutely prevent race conditions when securing limited Pickup Slot capacities.
+- Built server-side cart pricing engine to secure mathematical parity during checkout (Base + Variants + Addons).
+- Created `BookingItem` snapshot architecture so historical orders freeze prices and names, preventing historical data mutation if a vendor later changes a menu item.
+- Enforced single-vendor cart isolation logic directly in the API.
+
+### Frontend
+- Created `CheckoutPage.jsx` where students can natively review their active cart, select available pickup slots, and lock in their PreBooking without relying on external state libraries.
+- Designed `VendorOrdersDashboard.jsx` featuring an `OrderTimeline` component, allowing vendors to view real-time incoming orders and transition their state (`PREPARING` -> `READY_FOR_PICKUP` -> `COMPLETED`).
+
+
 ### Backend
 - Implemented `menus` app containing `Category`, `MenuItem`, `MenuVariant`, and `AddOn` models.
 - Added support for comprehensive dietary flags, spice levels, scheduling (available_from/until), and minimum/maximum AddOn limits.
