@@ -1,0 +1,80 @@
+name: Production CI/CD
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  audit-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt flake8 pip-audit
+      - name: Audit Dependencies
+        run: |
+          cd backend
+          pip-audit
+      - name: Lint
+        run: |
+          cd backend
+          flake8 .
+
+  test-backend:
+    needs: audit-and-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install Dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+      - name: Run Tests
+        run: |
+          cd backend
+          python manage.py test --settings=config.settings.test
+
+  build-frontend:
+    needs: audit-and-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: NPM Install and Audit
+        run: |
+          cd frontend
+          npm install
+          npm audit --audit-level=high
+      - name: Build Vite
+        run: |
+          cd frontend
+          npm run build
+
+  deploy-render:
+    needs: [test-backend, build-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy Hook
+        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+
+  deploy-vercel:
+    needs: [test-backend, build-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel Deploy Hook
+        run: curl -X POST ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}

@@ -8,6 +8,7 @@ urlpatterns = [
     # API endpoints
     path('api/v1/auth/', include('apps.accounts.urls')),
     path('api/v1/', include('apps.universities.urls')),
+    path('health/', include('apps.health.urls')),
     path('api/v1/', include('apps.vendors.urls')),
     path('api/v1/', include('apps.menus.urls')),
     path('api/v1/orders/', include('apps.orders.urls')),
