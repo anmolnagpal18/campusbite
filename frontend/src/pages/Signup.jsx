@@ -1,0 +1,377 @@
+import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { useNavigate, Link } from 'react-router-dom';
+import authService from '../services/authService';
+import { 
+  User as UserIcon, Store, ChefHat, Building, 
+  ArrowLeft, Mail, Lock, Eye, EyeOff, ShieldCheck
+} from 'lucide-react';
+import toast from 'react-hot-toast';
+
+export const Signup = () => {
+  const navigate = useNavigate();
+  const [role, setRole] = useState(null);
+  const [colleges, setColleges] = useState([]);
+  const [vendors, setVendors] = useState([]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [collegeChoice, setCollegeChoice] = useState('select');
+
+  const { register, handleSubmit, watch, formState: { errors } } = useForm();
+  const passwordVal = watch('password');
+
+  useEffect(() => {
+    const fetchHelpers = async () => {
+      try {
+        const colList = await authService.getColleges();
+        setColleges(colList);
+      } catch (err) {
+        console.error('Failed to fetch colleges', err);
+      }
+
+      try {
+        const venList = await authService.getVendors();
+        setVendors(venList);
+      } catch (err) {
+        console.error('Failed to fetch vendors', err);
+      }
+    };
+    fetchHelpers();
+  }, []);
+
+  const onSubmit = async (data) => {
+    setLoading(true);
+    try {
+      if (role === 'USER') {
+        await authService.signupUser({
+          email: data.email,
+          password: data.password,
+          confirm_password: data.confirm_password
+        });
+      } else if (role === 'VENDOR') {
+        await authService.signupVendor({
+          email: data.email,
+          password: data.password,
+          confirm_password: data.confirm_password,
+          college: parseInt(data.college),
+          shop_name: data.shop_name,
+          shop_area: data.shop_area,
+          block: data.block
+        });
+      } else if (role === 'STAFF') {
+        await authService.signupStaff({
+          email: data.email,
+          password: data.password,
+          confirm_password: data.confirm_password,
+          vendor: parseInt(data.vendor)
+        });
+      } else if (role === 'COLLEGE_ADMIN') {
+        const payload = {
+          email: data.email,
+          password: data.password,
+          confirm_password: data.confirm_password
+        };
+        if (collegeChoice === 'select') {
+          payload.college = parseInt(data.college);
+        } else {
+          payload.college_name = data.college_name;
+          payload.college_city = data.college_city;
+        }
+        await authService.signupCollegeAdmin(payload);
+      }
+      toast.success('Account Created Successfully!');
+      navigate('/login');
+    } catch (err) {
+      console.error(err);
+      const errorsData = err.response?.data;
+      if (errorsData) {
+        Object.keys(errorsData).forEach(key => {
+          toast.error(`${key}: ${errorsData[key]}`);
+        });
+      } else {
+        toast.error('Signup failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const roles = [
+    { id: 'USER', title: 'User', desc: 'Order food from campus stalls', icon: <UserIcon className="h-8 w-8 text-purple-400" /> },
+    { id: 'VENDOR', title: 'Vendor', desc: 'Manage your campus food stall', icon: <Store className="h-8 w-8 text-emerald-400" /> },
+    { id: 'STAFF', title: 'Staff', desc: 'Work at a vendor food stall', icon: <ChefHat className="h-8 w-8 text-amber-400" /> },
+    { id: 'COLLEGE_ADMIN', title: 'College Admin', desc: 'Manage campus stalls & approvals', icon: <Building className="h-8 w-8 text-indigo-400" /> }
+  ];
+
+  const passRules = {
+    required: 'Password is required',
+    pattern: {
+      value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/,
+      message: 'Password must be at least 8 characters, with 1 uppercase, 1 lowercase, 1 number, and 1 special character.'
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#0c0a14] py-12 px-4 relative overflow-hidden">
+      <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl"></div>
+
+      <div className="max-w-2xl w-full glass-card p-8 md:p-10 rounded-3xl relative z-10">
+        
+        {!role ? (
+          <div>
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-300">
+                Select Your Role
+              </h1>
+              <p className="text-gray-400 text-sm mt-2">Choose the type of account you want to create</p>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+              {roles.map((r) => (
+                <div
+                  key={r.id}
+                  onClick={() => setRole(r.id)}
+                  className="p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-purple-500/50 cursor-pointer transition-all duration-300 group hover:bg-white/10"
+                >
+                  <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 w-fit mb-4 group-hover:scale-110 transition-transform">
+                    {r.icon}
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-200 group-hover:text-purple-300 transition-colors">{r.title}</h3>
+                  <p className="text-gray-400 text-sm mt-2">{r.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-center text-sm text-gray-400">
+              Already have an account?{' '}
+              <Link to="/login" className="text-purple-400 hover:text-purple-300 font-semibold transition-colors">
+                Sign In
+              </Link>
+            </p>
+          </div>
+        ) : (
+          <div>
+            <button
+              onClick={() => setRole(null)}
+              className="flex items-center gap-2 text-sm text-gray-400 hover:text-white mb-6 group cursor-pointer"
+            >
+              <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+              Back to Role Selection
+            </button>
+            
+            <div className="mb-6">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold uppercase tracking-wider">
+                {role.replace('_', ' ')} REGISTRATION
+              </span>
+              <h2 className="text-2xl font-bold text-gray-200 mt-3">Create Your Account</h2>
+            </div>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              
+              {role === 'VENDOR' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">College</label>
+                    <select
+                      {...register('college', { required: 'Please select your college' })}
+                      className="w-full px-4 py-3 rounded-xl glass-input text-sm text-gray-200"
+                    >
+                      <option value="">Select College</option>
+                      {colleges.map((c) => (
+                        <option key={c.id} value={c.id} className="bg-[#12101b]">{c.name} ({c.city})</option>
+                      ))}
+                    </select>
+                    {errors.college && <span className="text-xs text-red-400 mt-1 block">{errors.college.message}</span>}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Shop Name</label>
+                    <input
+                      type="text"
+                      {...register('shop_name', { required: 'Shop name is required' })}
+                      placeholder="My Campus Stall"
+                      className="w-full px-4 py-3 rounded-xl glass-input text-sm text-gray-200 text-glow"
+                    />
+                    {errors.shop_name && <span className="text-xs text-red-400 mt-1 block">{errors.shop_name.message}</span>}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Shop Area</label>
+                    <input
+                      type="text"
+                      {...register('shop_area', { required: 'Shop area is required' })}
+                      placeholder="Main Canteen"
+                      className="w-full px-4 py-3 rounded-xl glass-input text-sm text-gray-200"
+                    />
+                    {errors.shop_area && <span className="text-xs text-red-400 mt-1 block">{errors.shop_area.message}</span>}
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Block</label>
+                    <input
+                      type="text"
+                      {...register('block', { required: 'Block is required' })}
+                      placeholder="Block C, Ground Floor"
+                      className="w-full px-4 py-3 rounded-xl glass-input text-sm text-gray-200"
+                    />
+                    {errors.block && <span className="text-xs text-red-400 mt-1 block">{errors.block.message}</span>}
+                  </div>
+                </div>
+              )}
+
+              {role === 'STAFF' && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Select Vendor ID</label>
+                  <select
+                    {...register('vendor', { required: 'Vendor selection is required' })}
+                    className="w-full px-4 py-3 rounded-xl glass-input text-sm text-gray-200"
+                  >
+                    <option value="">Select Vendor Shop</option>
+                    {vendors.map((v) => (
+                      <option key={v.id} value={v.id} className="bg-[#12101b]">{v.shop_name} ({v.college_name} - {v.owner_email})</option>
+                    ))}
+                  </select>
+                  {errors.vendor && <span className="text-xs text-red-400 mt-1 block">{errors.vendor.message}</span>}
+                </div>
+              )}
+
+              {role === 'COLLEGE_ADMIN' && (
+                <div className="space-y-4">
+                  <div className="flex gap-4 p-1 rounded-xl bg-white/5 border border-white/5 w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setCollegeChoice('select')}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${collegeChoice === 'select' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      Select Existing College
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCollegeChoice('create')}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${collegeChoice === 'create' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      Register New College
+                    </button>
+                  </div>
+
+                  {collegeChoice === 'select' ? (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">College</label>
+                      <select
+                        {...register('college', { required: collegeChoice === 'select' ? 'Please select your college' : false })}
+                        className="w-full px-4 py-3 rounded-xl glass-input text-sm text-gray-200"
+                      >
+                        <option value="">Select College</option>
+                        {colleges.map((c) => (
+                          <option key={c.id} value={c.id} className="bg-[#12101b]">{c.name} ({c.city})</option>
+                        ))}
+                      </select>
+                      {errors.college && <span className="text-xs text-red-400 mt-1 block">{errors.college.message}</span>}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">College Name</label>
+                        <input
+                          type="text"
+                          {...register('college_name', { required: collegeChoice === 'create' ? 'College name is required' : false })}
+                          placeholder="ABC University"
+                          className="w-full px-4 py-3 rounded-xl glass-input text-sm text-gray-200"
+                        />
+                        {errors.college_name && <span className="text-xs text-red-400 mt-1 block">{errors.college_name.message}</span>}
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">City</label>
+                        <input
+                          type="text"
+                          {...register('college_city', { required: collegeChoice === 'create' ? 'City is required' : false })}
+                          placeholder="Boston"
+                          className="w-full px-4 py-3 rounded-xl glass-input text-sm text-gray-200"
+                        />
+                        {errors.college_city && <span className="text-xs text-red-400 mt-1 block">{errors.college_city.message}</span>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="email"
+                    {...register('email', { 
+                      required: 'Email is required',
+                      pattern: { value: /^\S+@\S+$/i, message: 'Invalid email address' }
+                    })}
+                    placeholder="you@campusfood.com"
+                    className="w-full pl-11 pr-4 py-3 rounded-xl glass-input text-sm text-gray-200"
+                  />
+                </div>
+                {errors.email && <span className="text-xs text-red-400 mt-1 block">{errors.email.message}</span>}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      {...register('password', passRules)}
+                      placeholder="••••••••"
+                      className="w-full pl-11 pr-11 py-3 rounded-xl glass-input text-sm text-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                  {errors.password && <span className="text-xs text-red-400 mt-1 block leading-tight">{errors.password.message}</span>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Confirm Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      {...register('confirm_password', { 
+                        required: 'Confirm password is required',
+                        validate: (value) => value === passwordVal || 'Passwords do not match'
+                      })}
+                      placeholder="••••••••"
+                      className="w-full pl-11 pr-11 py-3 rounded-xl glass-input text-sm text-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                  {errors.confirm_password && <span className="text-xs text-red-400 mt-1 block">{errors.confirm_password.message}</span>}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20 transition-all duration-200 cursor-pointer mt-4"
+              >
+                <ShieldCheck className="h-5 w-5" />
+                {loading ? 'Creating Account...' : 'Create Account'}
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Signup;

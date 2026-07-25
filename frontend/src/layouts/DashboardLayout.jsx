@@ -1,0 +1,185 @@
+import React, { useState } from 'react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { 
+  LayoutDashboard, Users, LogOut, Menu, X, Building, Store, Shield, ChefHat
+} from 'lucide-react';
+
+const DashboardLayout = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  const getRoleLabel = (role) => {
+    switch (role) {
+      case 'SUPER_ADMIN': return 'Super Admin';
+      case 'COLLEGE_ADMIN': return 'College Admin';
+      case 'VENDOR': return 'Vendor';
+      case 'STAFF': return 'Staff';
+      case 'USER': return 'User';
+      default: return '';
+    }
+  };
+
+  const getRoleIcon = (role) => {
+    switch (role) {
+      case 'SUPER_ADMIN': return <Shield className="h-5 w-5 text-red-400" />;
+      case 'COLLEGE_ADMIN': return <Building className="h-5 w-5 text-indigo-400" />;
+      case 'VENDOR': return <Store className="h-5 w-5 text-emerald-400" />;
+      case 'STAFF': return <ChefHat className="h-5 w-5 text-amber-400" />;
+      default: return <Users className="h-5 w-5 text-purple-400" />;
+    }
+  };
+
+  const getNavigationLinks = (role) => {
+    switch (role) {
+      case 'SUPER_ADMIN':
+        return [
+          { name: 'Dashboard', path: '/super-admin/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
+        ];
+      case 'COLLEGE_ADMIN':
+        return [
+          { name: 'Dashboard', path: '/college-admin/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
+        ];
+      case 'VENDOR':
+        return [
+          { name: 'Dashboard', path: '/vendor/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
+        ];
+      case 'STAFF':
+        return [
+          { name: 'Dashboard', path: '/staff/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
+        ];
+      case 'USER':
+        return [
+          { name: 'Dashboard', path: '/user/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
+        ];
+      default:
+        return [];
+    }
+  };
+
+  const links = getNavigationLinks(user?.role);
+
+  return (
+    <div className="min-h-screen flex bg-[#0c0a14]">
+      {/* Mobile Sidebar Backdrop */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 glass-panel border-r border-white/5 bg-[#0f0d1a]
+        transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:h-screen lg:flex lg:flex-col
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        {/* Brand Header */}
+        <div className="h-16 flex items-center justify-between px-6 border-b border-white/5">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center font-bold text-white text-lg shadow-lg shadow-purple-500/20">
+              CB
+            </div>
+            <span className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-300 text-glow">
+              CampusBite
+            </span>
+          </div>
+          <button className="lg:hidden text-gray-400 hover:text-white" onClick={() => setSidebarOpen(false)}>
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* User Card */}
+        <div className="p-4 mx-4 my-6 rounded-xl bg-white/5 border border-white/5 flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
+            {getRoleIcon(user?.role)}
+          </div>
+          <div className="overflow-hidden">
+            <h4 className="font-medium text-sm text-gray-200 truncate">{user?.email}</h4>
+            <span className="text-xs text-purple-400 font-semibold">{getRoleLabel(user?.role)}</span>
+          </div>
+        </div>
+
+        {/* Navigation Menu */}
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
+          {links.map((link) => {
+            const isActive = location.pathname === link.path;
+            return (
+              <button
+                key={link.name}
+                onClick={() => {
+                  navigate(link.path);
+                  setSidebarOpen(false);
+                }}
+                className={`
+                  w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200
+                  ${isActive 
+                    ? 'bg-gradient-to-r from-purple-600/30 to-indigo-600/30 text-purple-200 border-l-2 border-purple-500 shadow-inner' 
+                    : 'text-gray-400 hover:bg-white/5 hover:text-white'}
+                `}
+              >
+                {link.icon}
+                {link.name}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Logout Footer */}
+        <div className="p-4 border-t border-white/5 bg-black/20">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors duration-200"
+          >
+            <LogOut className="h-5 w-5" />
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
+        {/* Sticky Top Navbar */}
+        <header className="sticky top-0 z-30 h-16 flex items-center justify-between px-6 bg-[#0c0a14]/80 backdrop-blur-md border-b border-white/5">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden text-gray-400 hover:text-white focus:outline-none"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+            <h2 className="text-lg font-semibold text-gray-100 capitalize">
+              {location.pathname.split('/').pop()?.replace('-', ' ')}
+            </h2>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="h-8 w-[1px] bg-white/10 hidden md:block"></div>
+            <div className="hidden md:flex items-center gap-2">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold tracking-wide uppercase">
+                Active Session
+              </span>
+            </div>
+          </div>
+        </header>
+
+        {/* Dashboard Pages Content */}
+        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+          <div className="max-w-7xl mx-auto animate-fade-in">
+            <Outlet />
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default DashboardLayout;
