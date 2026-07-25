@@ -17,7 +17,8 @@ export const ShopForm = ({ initialData, onSubmit, loading }) => {
         block: initialData.block,
         opening_time: initialData.opening_time ? initialData.opening_time.substring(0, 5) : '',
         closing_time: initialData.closing_time ? initialData.closing_time.substring(0, 5) : '',
-        status: initialData.status
+        status: initialData.status,
+        accepting_orders: initialData.accepting_orders
       });
     }
   }, [initialData, reset]);
@@ -89,6 +90,20 @@ export const ShopForm = ({ initialData, onSubmit, loading }) => {
             error={errors.status?.message}
             {...register('status', { required: 'Shop status is required.' })}
           />
+        </div>
+
+        <div className="sm:col-span-2">
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+            <div>
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Accepting Orders</span>
+              <p className="text-[10px] text-gray-500 mt-0.5">Toggle whether users can place active orders for your canteen dishes.</p>
+            </div>
+            <input
+              type="checkbox"
+              className="h-5 w-5 rounded border-white/10 bg-white/5 text-purple-600 focus:ring-purple-500 focus:ring-offset-0 focus:outline-none"
+              {...register('accepting_orders')}
+            />
+          </div>
         </div>
       </div>
 

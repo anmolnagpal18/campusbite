@@ -21,22 +21,31 @@ export const MenuManagement = () => {
 
   const [restaurant, setRestaurant] = useState(null);
 
+  // Categories lists
   const [categories, setCategories] = useState([]);
   const [catTotal, setCatTotal] = useState(0);
   const [catPage, setCatPage] = useState(1);
   const [catSearch, setCatSearch] = useState('');
   const [catLoading, setCatLoading] = useState(true);
 
+  // Items lists
   const [items, setItems] = useState([]);
   const [itemTotal, setItemTotal] = useState(0);
   const [itemPage, setItemPage] = useState(1);
   const [itemSearch, setItemSearch] = useState('');
   const [itemCategory, setItemCategory] = useState('');
+  const [itemAvailability, setItemAvailability] = useState('');
+  const [itemPageSize, setItemPageSize] = useState(10);
   const [itemLoading, setItemLoading] = useState(true);
 
+  // Selections & Bulks
+  const [selectedItemIds, setSelectedItemIds] = useState([]);
+
+  // All categories & items for live menu preview
   const [allCategories, setAllCategories] = useState([]);
   const [allItems, setAllItems] = useState([]);
 
+  // Modals state
   const [catModalOpen, setCatModalOpen] = useState(false);
   const [editingCat, setEditingCat] = useState(null);
   const [catSubmitting, setCatSubmitting] = useState(false);
@@ -45,8 +54,9 @@ export const MenuManagement = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [itemSubmitting, setItemSubmitting] = useState(false);
 
+  // Deletions
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'category' | 'item' | 'bulk_items', obj: ... }
 
   const fetchRestaurant = async () => {
     try {
@@ -75,7 +85,13 @@ export const MenuManagement = () => {
   const fetchItems = async () => {
     setItemLoading(true);
     try {
-      const res = await foodItemService.getFoodItems(itemPage, itemSearch, itemCategory);
+      const res = await foodItemService.getFoodItems(
+        itemPage, 
+        itemSearch, 
+        itemCategory, 
+        itemAvailability, 
+        itemPageSize
+      );
       if (res && res.results) {
         setItems(res.results);
         setItemTotal(res.count);
@@ -89,8 +105,9 @@ export const MenuManagement = () => {
 
   const syncMenuPreview = async () => {
     try {
+      // Fetch full unpaginated categories & items lists for customer preview panel
       const catRes = await categoryService.getCategories(1, '');
-      const itemsRes = await foodItemService.getFoodItems(1, '', '');
+      const itemsRes = await foodItemService.getFoodItems(1, '', '', '', 200);
       
       if (catRes && catRes.results) {
         setAllCategories(catRes.results);
@@ -113,7 +130,8 @@ export const MenuManagement = () => {
 
   useEffect(() => {
     fetchItems();
-  }, [itemPage, itemSearch, itemCategory]);
+    setSelectedItemIds([]); // reset selections on filter change
+  }, [itemPage, itemSearch, itemCategory, itemAvailability, itemPageSize]);
 
   useEffect(() => {
     syncMenuPreview();
@@ -154,7 +172,7 @@ export const MenuManagement = () => {
       setEditingItem(null);
       fetchItems();
     } catch (err) {
-      const errMsg = err.response?.data?.item_name?.[0] || 'Validation error occurred.';
+      const errMsg = err.response?.data?.item_name?.[0] || err.response?.data?.food_image?.[0] || 'Validation error occurred.';
       toast.error(errMsg);
     } finally {
       setItemSubmitting(false);
@@ -164,6 +182,58 @@ export const MenuManagement = () => {
   const handleDeleteTrigger = (type, obj) => {
     setDeleteTarget({ type, obj });
     setDeleteConfirmOpen(true);
+  };
+
+  // Reordering handler
+  const handleReorder = async (itemId, direction) => {
+    const idx = items.findIndex((i) => i.id === itemId);
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    
+    if (targetIdx >= 0 && targetIdx < items.length) {
+      const currentItem = items[idx];
+      const targetItem = items[targetIdx];
+      
+      const payload = [
+        { id: currentItem.id, display_order: targetItem.display_order || idx + 1 },
+        { id: targetItem.id, display_order: currentItem.display_order || idx }
+      ];
+
+      try {
+        await foodItemService.reorderFoodItems(payload);
+        toast.success('Menu order updated');
+        fetchItems();
+      } catch (err) {
+        toast.error('Failed to save display order reorder.');
+      }
+    }
+  };
+
+  // Bulk operation execution
+  const handleBulkAction = async (action, value) => {
+    if (action === 'delete') {
+      setDeleteTarget({ type: 'bulk_items', obj: selectedItemIds });
+      setDeleteConfirmOpen(true);
+      return;
+    }
+
+    try {
+      const payload = {
+        action,
+        item_ids: selectedItemIds
+      };
+      if (action === 'change_availability') {
+        payload.availability = value;
+      } else if (action === 'move_category') {
+        payload.category_id = value;
+      }
+
+      await foodItemService.bulkOperations(payload);
+      toast.success('Bulk update completed successfully');
+      setSelectedItemIds([]);
+      fetchItems();
+    } catch (err) {
+      toast.error('Bulk action failed.');
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -176,13 +246,21 @@ export const MenuManagement = () => {
         toast.success('Category deleted successfully');
         fetchCategories();
         fetchItems();
-      } else {
+      } else if (type === 'item') {
         await foodItemService.deleteFoodItem(obj.id);
         toast.success('Food item deleted successfully');
         fetchItems();
+      } else if (type === 'bulk_items') {
+        await foodItemService.bulkOperations({
+          action: 'delete',
+          item_ids: obj
+        });
+        toast.success(`Successfully deleted ${obj.length} food items`);
+        setSelectedItemIds([]);
+        fetchItems();
       }
     } catch (err) {
-      toast.error('Failed to delete item.');
+      toast.error('Action execution failed.');
     } finally {
       setDeleteConfirmOpen(false);
       setDeleteTarget(null);
@@ -282,24 +360,39 @@ export const MenuManagement = () => {
                   />
                 ) : (
                   <div className="space-y-4">
-                    <div className="flex gap-4 items-center">
+                    {/* Filters Section */}
+                    <div className="flex flex-wrap gap-4 items-center bg-white/[0.01] p-3 rounded-2xl border border-white/5">
                       <select
                         value={itemCategory}
                         onChange={(e) => {
                           setItemCategory(e.target.value);
                           setItemPage(1);
                         }}
-                        className="px-4 py-2.5 rounded-xl glass-input text-xs font-semibold text-gray-300"
+                        className="px-4 py-2.5 rounded-xl glass-input text-xs font-semibold text-gray-300 focus:outline-none"
                       >
                         <option value="">All Categories</option>
                         {categories.map((c) => (
                           <option key={c.id} value={c.id}>{c.category_name}</option>
                         ))}
                       </select>
+
+                      <select
+                        value={itemAvailability}
+                        onChange={(e) => {
+                          setItemAvailability(e.target.value);
+                          setItemPage(1);
+                        }}
+                        className="px-4 py-2.5 rounded-xl glass-input text-xs font-semibold text-gray-300 focus:outline-none"
+                      >
+                        <option value="">All Availabilities</option>
+                        <option value="AVAILABLE">Available</option>
+                        <option value="OUT_OF_STOCK">Out of Stock</option>
+                      </select>
                     </div>
 
                     <FoodItemTable
                       items={items}
+                      categories={allCategories}
                       loading={itemLoading}
                       onEdit={(item) => {
                         setEditingItem(item);
@@ -314,6 +407,16 @@ export const MenuManagement = () => {
                       currentPage={itemPage}
                       totalCount={itemTotal}
                       onPageChange={setItemPage}
+                      pageSize={itemPageSize}
+                      onPageSizeChange={setItemPageSize}
+                      
+                      // Bulk actions props
+                      selectedItemIds={selectedItemIds}
+                      onSelectionChange={setSelectedItemIds}
+                      onBulkAction={handleBulkAction}
+                      
+                      // Reorder callback
+                      onReorder={handleReorder}
                     />
                   </div>
                 )}
@@ -353,10 +456,18 @@ export const MenuManagement = () => {
         onClose={() => setDeleteConfirmOpen(false)}
         onConfirm={handleDeleteConfirm}
         type="danger"
-        title={deleteTarget?.type === 'category' ? 'Delete Category?' : 'Delete Food Item?'}
+        title={
+          deleteTarget?.type === 'category'
+            ? 'Delete Category?'
+            : deleteTarget?.type === 'bulk_items'
+            ? `Delete ${deleteTarget.obj?.length} food items?`
+            : 'Delete Food Item?'
+        }
         message={
           deleteTarget?.type === 'category'
             ? 'Deleting this category will also hide all food items inside it. Are you sure you want to proceed?'
+            : deleteTarget?.type === 'bulk_items'
+            ? 'Are you sure you want to hide the selected food items? This action hides the selected items from customers.'
             : 'Are you sure you want to delete this food item? This action will hide it from the customer menu.'
         }
         confirmText="Delete"

@@ -137,6 +137,44 @@ export const VendorDashboard = () => {
         />
       </div>
 
+      {/* Advanced Analytics Card */}
+      <div className="glass-card p-6 rounded-3xl border border-white/5 shadow-2xl space-y-6">
+        <div>
+          <h2 className="text-lg font-bold text-gray-100">Advanced Menu & Order Analytics</h2>
+          <p className="text-xs text-gray-400">Deep-dive stats relating to food categories, items stock, and sales metrics.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 flex flex-col justify-between h-24">
+            <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block">Category with Most Items</span>
+            <span className="text-lg font-extrabold text-gray-200">{loadingStats ? '...' : stats?.category_most_items || 'None'}</span>
+          </div>
+          <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 flex flex-col justify-between h-24">
+            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest block">Low Stock Items</span>
+            <span className="text-lg font-extrabold text-gray-200">{loadingStats ? '...' : stats?.low_stock_items_count} items</span>
+          </div>
+          <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 flex flex-col justify-between h-24">
+            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block">Total Active Menu Items</span>
+            <span className="text-lg font-extrabold text-gray-200">{loadingStats ? '...' : stats?.total_active_menu_items} active</span>
+          </div>
+          <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 flex flex-col justify-between h-24">
+            <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest block">Best Selling Category</span>
+            <span className="text-xs text-gray-500 font-semibold">{loadingStats ? '...' : stats?.best_selling_category}</span>
+          </div>
+          <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 flex flex-col justify-between h-24">
+            <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest block">Average Order Value</span>
+            <span className="text-xs text-gray-500 font-semibold">{loadingStats ? '...' : stats?.avg_order_value}</span>
+          </div>
+          <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 flex flex-col justify-between h-24">
+            <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block">Most Ordered Item</span>
+            <span className="text-xs text-gray-500 font-semibold">{loadingStats ? '...' : stats?.most_ordered_item}</span>
+          </div>
+          <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 flex flex-col justify-between h-24">
+            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest block">Least Ordered Item</span>
+            <span className="text-xs text-gray-500 font-semibold">{loadingStats ? '...' : stats?.least_ordered_item}</span>
+          </div>
+        </div>
+      </div>
+
       <div className="glass-card p-6 rounded-3xl border border-white/5 shadow-2xl">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">

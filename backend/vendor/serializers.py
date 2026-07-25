@@ -9,11 +9,10 @@ class RestaurantSerializer(serializers.ModelSerializer):
         model = Restaurant
         fields = [
             'id', 'restaurant_name', 'shop_area', 'block', 
-            'opening_time', 'closing_time', 'status', 'is_currently_open'
+            'opening_time', 'closing_time', 'status', 'accepting_orders', 'is_currently_open'
         ]
 
     def validate(self, data):
-        # Fetch existing times if they are not in the update payload
         opening_time = data.get('opening_time')
         closing_time = data.get('closing_time')
 
@@ -61,9 +60,17 @@ class FoodItemSerializer(serializers.ModelSerializer):
         model = FoodItem
         fields = [
             'id', 'category', 'category_name', 'item_name', 'description', 
-            'price', 'quantity', 'food_image', 'availability', 'created_at', 'updated_at'
+            'price', 'quantity', 'food_image', 'food_thumbnail', 'availability', 
+            'display_order', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'food_thumbnail', 'created_at', 'updated_at']
+
+    def validate_food_image(self, value):
+        if value:
+            # Limit size to 5MB
+            if value.size > 5 * 1024 * 1024:
+                raise serializers.ValidationError("Image file size cannot exceed 5 MB.")
+        return value
 
     def validate_item_name(self, value):
         category_id = self.initial_data.get('category')

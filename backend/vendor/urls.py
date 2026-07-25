@@ -2,7 +2,8 @@ from django.urls import path
 from vendor.views import (
     VendorShopDetailView,
     FoodCategoryListCreateView, FoodCategoryRetrieveUpdateDestroyView,
-    FoodItemListCreateView, FoodItemRetrieveUpdateDestroyView
+    FoodItemListCreateView, FoodItemRetrieveUpdateDestroyView,
+    FoodItemBulkActionView, FoodItemReorderView
 )
 
 urlpatterns = [
@@ -11,4 +12,6 @@ urlpatterns = [
     path('v1/vendor/categories/<int:pk>/', FoodCategoryRetrieveUpdateDestroyView.as_view(), name='vendor-category-detail'),
     path('v1/vendor/items/', FoodItemListCreateView.as_view(), name='vendor-item-list'),
     path('v1/vendor/items/<int:pk>/', FoodItemRetrieveUpdateDestroyView.as_view(), name='vendor-item-detail'),
+    path('v1/vendor/items/bulk/', FoodItemBulkActionView.as_view(), name='vendor-item-bulk'),
+    path('v1/vendor/items/reorder/', FoodItemReorderView.as_view(), name='vendor-item-reorder'),
 ]

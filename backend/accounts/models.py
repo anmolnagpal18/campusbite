@@ -97,6 +97,7 @@ class Restaurant(TimestampedSoftDeletedModel):
     opening_time = models.TimeField(null=True, blank=True)
     closing_time = models.TimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=ShopStatus.choices, default=ShopStatus.OPEN)
+    accepting_orders = models.BooleanField(default=True)
 
     @property
     def is_currently_open(self):

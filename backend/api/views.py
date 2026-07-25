@@ -287,11 +287,23 @@ class VendorDashboardStatsView(APIView):
         total_categories = 0
         total_items = 0
         available_items = 0
+        category_most_items = "None"
+        low_stock_items_count = 0
+        
+        LOW_STOCK_LIMIT = 5
         
         if restaurant:
             total_categories = FoodCategory.objects.filter(restaurant=restaurant).count()
             total_items = FoodItem.objects.filter(category__restaurant=restaurant).count()
             available_items = FoodItem.objects.filter(category__restaurant=restaurant, availability=ItemAvailability.AVAILABLE).count()
+            
+            # Find category with most items
+            cat_qs = FoodCategory.objects.filter(restaurant=restaurant).annotate(item_count=models.Count('items')).order_by('-item_count')
+            if cat_qs.exists() and cat_qs.first().item_count > 0:
+                category_most_items = cat_qs.first().category_name
+            
+            # Count low stock items
+            low_stock_items_count = FoodItem.objects.filter(category__restaurant=restaurant, quantity__lte=LOW_STOCK_LIMIT).count()
             
         stats = {
             "total_categories": total_categories,
@@ -300,6 +312,15 @@ class VendorDashboardStatsView(APIView):
             "today_orders": 0,
             "today_revenue": 0.00,
             "pending_staff": StaffProfile.objects.filter(vendor=vendor_profile, status=ApprovalStatus.PENDING).count(),
+            
+            # Extended Analytics
+            "category_most_items": category_most_items,
+            "low_stock_items_count": low_stock_items_count,
+            "best_selling_category": "No order data available yet.",
+            "avg_order_value": "No order data available yet.",
+            "total_active_menu_items": available_items,
+            "most_ordered_item": "No order data available yet.",
+            "least_ordered_item": "No order data available yet.",
         }
         return Response(stats)
 
