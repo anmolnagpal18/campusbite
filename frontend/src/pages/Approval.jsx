@@ -3,6 +3,8 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getDashboardRoute } from '../components/ProtectedRoute';
 import { RefreshCw, Clock, XCircle, LogOut } from 'lucide-react';
+import { Button } from '../components/common/Button';
+import ROUTES from '../routes/constants';
 import toast from 'react-hot-toast';
 
 export const Approval = () => {
@@ -11,7 +13,7 @@ export const Approval = () => {
   const [checking, setChecking] = useState(false);
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={ROUTES.LOGIN} replace />;
   }
 
   const handleRecheck = async () => {
@@ -33,7 +35,7 @@ export const Approval = () => {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/login');
+    navigate(ROUTES.LOGIN);
   };
 
   const getStatusContent = () => {
@@ -83,23 +85,24 @@ export const Approval = () => {
         
         <div className="space-y-3">
           {user.status === 'PENDING' && (
-            <button
+            <Button
               onClick={handleRecheck}
-              disabled={checking}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white font-medium rounded-lg transition-colors duration-200 cursor-pointer"
+              loading={checking}
+              icon={<RefreshCw className="h-4 w-4" />}
+              className="w-full"
             >
-              <RefreshCw className={`h-4 w-4 ${checking ? 'animate-spin' : ''}`} />
-              {checking ? 'Checking Status...' : 'Recheck Status'}
-            </button>
+              Recheck Status
+            </Button>
           )}
           
-          <button
+          <Button
+            variant="secondary"
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-medium rounded-lg border border-white/10 transition-colors duration-200 cursor-pointer"
+            icon={<LogOut className="h-4 w-4" />}
+            className="w-full"
           >
-            <LogOut className="h-4 w-4" />
             Logout from Account
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -1,5 +1,8 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import authService from '../services/authService';
+import authService from '../services/auth';
+import vendorService from '../services/vendor';
+import staffService from '../services/staff';
+import collegeService from '../services/college';
 
 const AuthContext = createContext(null);
 
@@ -30,14 +33,20 @@ export const AuthProvider = ({ children }) => {
     try {
       let updatedStatus = currentUser.status;
       if (currentUser.role === 'VENDOR') {
-        const res = await authService.getVendorStatus();
-        updatedStatus = res.status;
+        const res = await vendorService.getVendorStatus();
+        if (res.success) {
+          updatedStatus = res.data.status;
+        }
       } else if (currentUser.role === 'STAFF') {
-        const res = await authService.getStaffStatus();
-        updatedStatus = res.status;
+        const res = await staffService.getStaffStatus();
+        if (res.success) {
+          updatedStatus = res.data.status;
+        }
       } else if (currentUser.role === 'COLLEGE_ADMIN') {
-        const res = await authService.getCollegeAdminStatus();
-        updatedStatus = res.status;
+        const res = await collegeService.getCollegeAdminStatus();
+        if (res.success) {
+          updatedStatus = res.data.status;
+        }
       }
       
       if (updatedStatus !== currentUser.status) {
@@ -55,8 +64,9 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      const data = await authService.login(email, password);
-      const { access, refresh, user: userData } = data;
+      const res = await authService.login(email, password);
+      // Backend structured response: { success: true, message: "...", data: { access: "...", refresh: "...", user: {...} } }
+      const { access, refresh, user: userData } = res.data;
       
       localStorage.setItem('access_token', access);
       localStorage.setItem('refresh_token', refresh);

@@ -1,24 +1,47 @@
-import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { ChefHat } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import dashboardService from '../services/dashboard';
+import { PageHeader } from '../components/common/PageHeader';
+import { StatCard } from '../components/common/StatCard';
+import { ChefHat, ShoppingBag } from 'lucide-react';
 
 export const StaffDashboard = () => {
-  const { user } = useAuth();
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await dashboardService.getStaffStats();
+        if (res.success) {
+          setStats(res.data);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
   return (
     <div className="space-y-6">
-      <div className="p-8 rounded-3xl bg-gradient-to-r from-amber-800/40 to-orange-950/40 border border-white/5 relative overflow-hidden shadow-2xl">
-        <h1 className="text-3xl font-bold text-white mb-2">Staff Portal</h1>
-        <p className="text-gray-300">Welcome to your workspace. Manage food preparation and order queue.</p>
-      </div>
+      <PageHeader 
+        title={`Staff Portal - ${loading ? '...' : stats?.vendor_shop_name}`} 
+        description="Welcome to your workspace. Manage food preparation and order queue."
+      />
 
-      <div className="glass-card p-6 rounded-2xl border border-white/5">
-        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl w-fit mb-4">
-          <ChefHat className="h-6 w-6 text-amber-400" />
-        </div>
-        <h3 className="text-lg font-bold text-gray-100">Order Management</h3>
-        <p className="text-gray-400 text-sm mt-2 leading-relaxed">
-          Order tracking and preparation management screens will appear here as features are added.
-        </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <StatCard 
+          title="Orders Preparing" 
+          value={loading ? '...' : stats?.preparing_orders} 
+          icon={<ChefHat className="h-6 w-6 text-amber-400" />} 
+        />
+        <StatCard 
+          title="Orders Ready" 
+          value={loading ? '...' : stats?.ready_orders} 
+          icon={<ShoppingBag className="h-6 w-6 text-emerald-400" />} 
+        />
       </div>
     </div>
   );

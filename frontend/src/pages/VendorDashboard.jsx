@@ -1,55 +1,128 @@
 import React, { useState, useEffect } from 'react';
-import authService from '../services/authService';
-import { ChefHat, Check, X } from 'lucide-react';
+import dashboardService from '../services/dashboard';
+import staffService from '../services/staff';
+import { PageHeader } from '../components/common/PageHeader';
+import { StatCard } from '../components/common/StatCard';
+import { DataTable } from '../components/common/DataTable';
+import { Button } from '../components/common/Button';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
+import { ChefHat, ShieldAlert, Check, X, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const VendorDashboard = () => {
+  const [stats, setStats] = useState(null);
   const [pendingStaff, setPendingStaff] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchVal, setSearchVal] = useState('');
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingTable, setLoadingTable] = useState(true);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [selectedStaffId, setSelectedStaffId] = useState(null);
+  const [actionType, setActionType] = useState('approve');
+
+  const fetchStats = async () => {
+    try {
+      const res = await dashboardService.getVendorStats();
+      if (res.success) {
+        setStats(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
   const fetchPendingStaff = async () => {
+    setLoadingTable(true);
     try {
-      const data = await authService.getPendingStaff();
-      setPendingStaff(data);
+      const res = await staffService.getPendingStaff(currentPage, searchVal);
+      if (res.success && res.data) {
+        setPendingStaff(res.data.results);
+        setTotalCount(res.data.count);
+      }
     } catch (err) {
       toast.error('Failed to load pending staff applications.');
     } finally {
-      setLoading(false);
+      setLoadingTable(false);
     }
   };
 
   useEffect(() => {
-    fetchPendingStaff();
+    fetchStats();
   }, []);
 
-  const handleApprove = async (id) => {
+  useEffect(() => {
+    fetchPendingStaff();
+  }, [currentPage, searchVal]);
+
+  const handleAction = (id, type) => {
+    setSelectedStaffId(id);
+    setActionType(type);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmAction = async () => {
     try {
-      await authService.approveStaff(id);
-      toast.success('Staff member approved successfully!');
+      if (actionType === 'approve') {
+        await staffService.approveStaff(selectedStaffId);
+        toast.success('Staff member approved successfully!');
+      } else {
+        await staffService.rejectStaff(selectedStaffId);
+        toast.success('Staff member rejected.');
+      }
       fetchPendingStaff();
+      fetchStats();
     } catch (err) {
-      toast.error('Failed to approve staff.');
+      toast.error(`Action failed.`);
     }
   };
 
-  const handleReject = async (id) => {
-    try {
-      await authService.rejectStaff(id);
-      toast.success('Staff member rejected successfully.');
-      fetchPendingStaff();
-    } catch (err) {
-      toast.error('Failed to reject staff.');
-    }
-  };
+  const headers = [
+    { label: 'Email' },
+    { label: 'Stall Linking' },
+    { label: 'Registered On' },
+    { label: 'Actions', className: 'text-right' }
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="p-8 rounded-3xl bg-gradient-to-r from-emerald-800/40 to-teal-800/40 border border-white/5 relative overflow-hidden shadow-2xl">
-        <h1 className="text-3xl font-bold text-white mb-2">Vendor Dashboard</h1>
-        <p className="text-gray-300">Manage your stall staff and review employee registrations.</p>
+    <div className="space-y-8">
+      <PageHeader 
+        title="Vendor Control Panel" 
+        description="Monitor staff, track orders, and view stall statistics."
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard 
+          title="Staff Pending" 
+          value={loadingStats ? '...' : stats?.pending_staff} 
+          icon={<ShieldAlert className="h-6 w-6 text-amber-400 animate-pulse" />} 
+        />
+        <StatCard 
+          title="Staff Active" 
+          value={loadingStats ? '...' : stats?.approved_staff} 
+          icon={<ChefHat className="h-6 w-6 text-emerald-400" />} 
+        />
+        <StatCard 
+          title="Orders Preparing" 
+          value={loadingStats ? '...' : stats?.preparing_orders} 
+          icon={<ChefHat className="h-6 w-6 text-purple-400" />} 
+        />
+        <StatCard 
+          title="Orders Ready" 
+          value={loadingStats ? '...' : stats?.ready_orders} 
+          icon={<ChefHat className="h-6 w-6 text-indigo-400" />} 
+        />
+        <StatCard 
+          title="Today's Revenue" 
+          value={loadingStats ? '...' : `$${stats?.today_revenue.toFixed(2)}`} 
+          icon={<ChefHat className="h-6 w-6 text-emerald-500" />} 
+        />
       </div>
 
-      <div className="glass-card p-6 rounded-2xl border border-white/5">
+      <div className="glass-card p-6 rounded-3xl border border-white/5 shadow-2xl">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
             <ChefHat className="h-6 w-6 text-emerald-400" />
@@ -60,54 +133,62 @@ export const VendorDashboard = () => {
           </div>
         </div>
 
-        {loading ? (
-          <div className="py-8 flex justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500"></div>
-          </div>
-        ) : pendingStaff.length === 0 ? (
-          <div className="py-8 text-center text-gray-400 text-sm border border-dashed border-white/5 rounded-xl bg-white/[0.01]">
-            No pending staff approval requests.
-          </div>
-        ) : (
-          <div className="overflow-hidden border border-white/5 rounded-xl bg-white/[0.02]">
-            <table className="min-w-full divide-y divide-white/5">
-              <thead className="bg-[#12101b]">
-                <tr>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {pendingStaff.map((staff) => (
-                  <tr key={staff.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">{staff.user_email}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        {staff.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => handleApprove(staff.id)}
-                        className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-                      >
-                        <Check className="h-3.5 w-3.5" /> Approve
-                      </button>
-                      <button
-                        onClick={() => handleReject(staff.id)}
-                        className="inline-flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-                      >
-                        <X className="h-3.5 w-3.5" /> Reject
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <DataTable
+          headers={headers}
+          data={pendingStaff}
+          loading={loadingTable}
+          emptyMessage="No pending staff approval requests."
+          searchVal={searchVal}
+          onSearchChange={(val) => {
+            setSearchVal(val);
+            setCurrentPage(1);
+          }}
+          searchPlaceholder="Search by email..."
+          currentPage={currentPage}
+          totalCount={totalCount}
+          onPageChange={setCurrentPage}
+          renderRow={(staff) => (
+            <tr key={staff.id} className="hover:bg-white/[0.02] transition-colors">
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">{staff.user_email}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-semibold">{staff.vendor_shop}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-400">
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-gray-500" />
+                  {new Date(staff.created_at).toLocaleDateString()}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                <Button
+                  variant="success"
+                  size="sm"
+                  onClick={() => handleAction(staff.id, 'approve')}
+                  icon={<Check className="h-3.5 w-3.5" />}
+                >
+                  Approve
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => handleAction(staff.id, 'reject')}
+                  icon={<X className="h-3.5 w-3.5" />}
+                >
+                  Reject
+                </Button>
+              </td>
+            </tr>
+          )}
+        />
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={handleConfirmAction}
+        type={actionType === 'reject' ? 'danger' : 'primary'}
+        title={actionType === 'approve' ? 'Approve Staff Member' : 'Reject Staff Member'}
+        message={`Are you sure you want to ${actionType} this Staff Member? This action cannot be undone.`}
+        confirmText={actionType === 'approve' ? 'Approve' : 'Reject'}
+      />
     </div>
   );
 };

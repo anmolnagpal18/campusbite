@@ -1,5 +1,5 @@
 from rest_framework import permissions
-from accounts.models import Role
+from core.enums import Role, ApprovalStatus
 
 class IsSuperAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -16,3 +16,9 @@ class IsVendor(permissions.BasePermission):
 class IsStaff(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.role == Role.STAFF
+
+class IsApprovedUser(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        return request.user.approval_status == ApprovalStatus.APPROVED

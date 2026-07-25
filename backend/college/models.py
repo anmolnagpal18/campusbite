@@ -1,14 +1,11 @@
 from django.db import models
+from core.mixins import TimestampedSoftDeletedModel
+from core.enums import ApprovalStatus
 
-class College(models.Model):
-    STATUS_CHOICES = [
-        ('PENDING', 'Pending'),
-        ('APPROVED', 'Approved'),
-        ('REJECTED', 'Rejected'),
-    ]
+class College(TimestampedSoftDeletedModel):
     name = models.CharField(max_length=255, unique=True)
     city = models.CharField(max_length=255)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='APPROVED')
+    status = models.CharField(max_length=20, choices=ApprovalStatus.choices, default=ApprovalStatus.APPROVED)
 
     def __str__(self):
         return self.name

@@ -1,21 +1,22 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import ROUTES from '../routes/constants';
 
 export const getDashboardRoute = (role) => {
   switch (role) {
     case 'SUPER_ADMIN':
-      return '/super-admin/dashboard';
+      return ROUTES.SUPER_ADMIN_DASHBOARD;
     case 'COLLEGE_ADMIN':
-      return '/college-admin/dashboard';
+      return ROUTES.COLLEGE_ADMIN_DASHBOARD;
     case 'VENDOR':
-      return '/vendor/dashboard';
+      return ROUTES.VENDOR_DASHBOARD;
     case 'STAFF':
-      return '/staff/dashboard';
+      return ROUTES.STAFF_DASHBOARD;
     case 'USER':
-      return '/user/dashboard';
+      return ROUTES.USER_DASHBOARD;
     default:
-      return '/login';
+      return ROUTES.LOGIN;
   }
 };
 
@@ -32,7 +33,7 @@ export const ProtectedRoute = ({ children, allowedRoles }) => {
   }
 
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to={ROUTES.LOGIN} state={{ from: location }} replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
@@ -41,7 +42,7 @@ export const ProtectedRoute = ({ children, allowedRoles }) => {
 
   if (user.role !== 'SUPER_ADMIN' && user.role !== 'USER') {
     if (user.status === 'PENDING' || user.status === 'REJECTED') {
-      return <Navigate to="/approval" replace />;
+      return <Navigate to={ROUTES.APPROVAL} replace />;
     }
   }
 

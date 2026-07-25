@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './layouts/DashboardLayout';
+import ROUTES from './routes/constants';
 
 // Pages
 import Login from './pages/Login';
@@ -33,17 +34,16 @@ function App() {
         />
         <Routes>
           {/* Public Routes */}
-          <path /> {/* React Router needs standard Route structure */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path={ROUTES.LOGIN} element={<Login />} />
+          <Route path={ROUTES.SIGNUP} element={<Signup />} />
           
           {/* Approval screen */}
-          <Route path="/approval" element={<Approval />} />
+          <Route path={ROUTES.APPROVAL} element={<Approval />} />
 
           {/* Role-based Dashboard Routes */}
           <Route element={<DashboardLayout />}>
             <Route 
-              path="/user/dashboard" 
+              path={ROUTES.USER_DASHBOARD} 
               element={
                 <ProtectedRoute allowedRoles={['USER']}>
                   <UserDashboard />
@@ -51,7 +51,7 @@ function App() {
               } 
             />
             <Route 
-              path="/vendor/dashboard" 
+              path={ROUTES.VENDOR_DASHBOARD} 
               element={
                 <ProtectedRoute allowedRoles={['VENDOR']}>
                   <VendorDashboard />
@@ -59,7 +59,7 @@ function App() {
               } 
             />
             <Route 
-              path="/staff/dashboard" 
+              path={ROUTES.STAFF_DASHBOARD} 
               element={
                 <ProtectedRoute allowedRoles={['STAFF']}>
                   <StaffDashboard />
@@ -67,7 +67,7 @@ function App() {
               } 
             />
             <Route 
-              path="/college-admin/dashboard" 
+              path={ROUTES.COLLEGE_ADMIN_DASHBOARD} 
               element={
                 <ProtectedRoute allowedRoles={['COLLEGE_ADMIN']}>
                   <CollegeAdminDashboard />
@@ -75,7 +75,7 @@ function App() {
               } 
             />
             <Route 
-              path="/super-admin/dashboard" 
+              path={ROUTES.SUPER_ADMIN_DASHBOARD} 
               element={
                 <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
                   <SuperAdminDashboard />
@@ -85,7 +85,7 @@ function App() {
           </Route>
 
           {/* Catch-all redirect */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to={ROUTES.LOGIN} replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

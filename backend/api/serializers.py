@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from accounts.models import Role, ApprovalStatus, UserProfile, CollegeAdminProfile, VendorProfile, StaffProfile
+from core.enums import Role, ApprovalStatus
+from accounts.models import UserProfile, CollegeAdminProfile, VendorProfile, StaffProfile, Restaurant
 from college.models import College
 from api.validators import validate_password_strength
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -11,14 +12,15 @@ User = get_user_model()
 class CollegeSerializer(serializers.ModelSerializer):
     class Meta:
         model = College
-        fields = ['id', 'name', 'city', 'status']
+        fields = ['id', 'name', 'city', 'status', 'created_at']
 
 class VendorSelectSerializer(serializers.ModelSerializer):
     college_name = serializers.CharField(source='college.name', read_only=True)
     owner_email = serializers.CharField(source='user.email', read_only=True)
+    shop_name = serializers.CharField(source='restaurant.name', read_only=True)
     class Meta:
         model = VendorProfile
-        fields = ['id', 'shop_name', 'college_name', 'owner_email']
+        fields = ['uuid', 'shop_name', 'college_name', 'owner_email']
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -73,7 +75,7 @@ class CollegeAdminSignupSerializer(serializers.Serializer):
         if data['password'] != data['confirm_password']:
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
         if not data.get('college') and not (data.get('college_name') and data.get('college_city')):
-            raise serializers.ValidationError({"college": "Must select an existing college or provide a new college name and city."})
+            raise serializers.ValidationError({"college": "Must select an existing college or register a new one."})
         return data
 
     def create(self, validated_data):
@@ -82,7 +84,7 @@ class CollegeAdminSignupSerializer(serializers.Serializer):
             if not college:
                 college, created = College.objects.get_or_create(
                     name=validated_data['college_name'],
-                    defaults={'city': validated_data['college_city'], 'status': 'PENDING'}
+                    defaults={'city': validated_data['college_city'], 'status': ApprovalStatus.PENDING}
                 )
             user = User.objects.create_user(
                 email=validated_data['email'],
@@ -122,13 +124,16 @@ class VendorSignupSerializer(serializers.Serializer):
                 password=validated_data['password'],
                 role=Role.VENDOR
             )
-            VendorProfile.objects.create(
+            profile = VendorProfile.objects.create(
                 user=user,
                 college=validated_data['college'],
-                shop_name=validated_data['shop_name'],
-                shop_area=validated_data['shop_area'],
-                block=validated_data['block'],
                 status=ApprovalStatus.PENDING
+            )
+            Restaurant.objects.create(
+                vendor=profile,
+                name=validated_data['shop_name'],
+                shop_area=validated_data['shop_area'],
+                block=validated_data['block']
             )
             return user
 
@@ -136,7 +141,10 @@ class StaffSignupSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, validators=[validate_password_strength])
     confirm_password = serializers.CharField(write_only=True)
-    vendor = serializers.PrimaryKeyRelatedField(queryset=VendorProfile.objects.all())
+    vendor = serializers.SlugRelatedField(
+        slug_field='uuid',
+        queryset=VendorProfile.objects.filter(status=ApprovalStatus.APPROVED)
+    )
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -167,19 +175,22 @@ class CollegeAdminProfileSerializer(serializers.ModelSerializer):
     college_name = serializers.CharField(source='college.name', read_only=True)
     class Meta:
         model = CollegeAdminProfile
-        fields = ['id', 'user_email', 'college_name', 'status']
+        fields = ['id', 'user_email', 'college_name', 'status', 'created_at']
 
 class VendorProfileSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
     college_name = serializers.CharField(source='college.name', read_only=True)
+    shop_name = serializers.CharField(source='restaurant.name', read_only=True)
+    shop_area = serializers.CharField(source='restaurant.shop_area', read_only=True)
+    block = serializers.CharField(source='restaurant.block', read_only=True)
     class Meta:
         model = VendorProfile
-        fields = ['id', 'user_email', 'college_name', 'shop_name', 'shop_area', 'block', 'status']
+        fields = ['id', 'uuid', 'user_email', 'college_name', 'shop_name', 'shop_area', 'block', 'status', 'created_at']
 
 class StaffProfileSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
-    vendor_shop = serializers.CharField(source='vendor.shop_name', read_only=True)
+    vendor_shop = serializers.CharField(source='vendor.restaurant.name', read_only=True)
     vendor_owner = serializers.CharField(source='vendor.user.email', read_only=True)
     class Meta:
         model = StaffProfile
-        fields = ['id', 'user_email', 'vendor_shop', 'vendor_owner', 'status']
+        fields = ['id', 'user_email', 'vendor_shop', 'vendor_owner', 'status', 'created_at']
