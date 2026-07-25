@@ -7,6 +7,7 @@ import { DataTable } from '../components/common/DataTable';
 import { Button } from '../components/common/Button';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { ChefHat, ShieldAlert, Check, X, Calendar } from 'lucide-react';
+import { RevenueChart, OrderVolumeChart } from '../components/common/DashboardCharts';
 import toast from 'react-hot-toast';
 
 export const VendorDashboard = () => {
@@ -119,6 +120,15 @@ export const VendorDashboard = () => {
           title="Today's Revenue" 
           value={loadingStats ? '...' : `$${stats?.today_revenue.toFixed(2)}`} 
           icon={<ChefHat className="h-6 w-6 text-emerald-500" />} 
+        />
+      </div>
+
+      {/* Dashboard Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RevenueChart revenue={stats?.today_revenue || 0} />
+        <OrderVolumeChart 
+          preparing={stats?.preparing_orders || 0} 
+          ready={stats?.ready_orders || 0} 
         />
       </div>
 

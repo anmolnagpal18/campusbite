@@ -1,8 +1,8 @@
 import React from 'react';
 import SearchBar from './SearchBar';
-import Loader from './Loader';
 import EmptyState from './EmptyState';
 import Pagination from './Pagination';
+import { TableSkeleton } from './Skeleton';
 
 export const DataTable = ({
   headers = [],
@@ -33,11 +33,9 @@ export const DataTable = ({
 
       <div className="overflow-hidden border border-white/5 rounded-xl bg-white/[0.02] shadow-inner">
         {loading ? (
-          <div className="py-16">
-            <Loader size="md" />
-          </div>
+          <TableSkeleton rows={pageSize} />
         ) : data.length === 0 ? (
-          <EmptyState message={emptyMessage} />
+          <EmptyState title="No records found" message={emptyMessage} />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-white/5">

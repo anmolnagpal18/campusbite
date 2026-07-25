@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primary: #a855f7;
+  --color-secondary: #6366f1;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-bg-dark: #0c0a14;
+  --color-bg-panel: #12101b;
+}
+
 :root {
   --font-sans: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
 }

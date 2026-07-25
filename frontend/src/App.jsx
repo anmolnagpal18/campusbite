@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './layouts/DashboardLayout';
 import ROUTES from './routes/constants';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Pages
 import Login from './pages/Login';
@@ -15,23 +16,26 @@ import VendorDashboard from './pages/VendorDashboard';
 import StaffDashboard from './pages/StaffDashboard';
 import CollegeAdminDashboard from './pages/CollegeAdminDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import NotFound from './pages/NotFound';
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#1e1b2e',
-              color: '#f3f4f6',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: '12px',
-            },
-          }}
-        />
+        <ErrorBoundary>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#1e1b2e',
+                color: '#f3f4f6',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '12px',
+              },
+            }}
+          />
+
         <Routes>
           {/* Public Routes */}
           <Route path={ROUTES.LOGIN} element={<Login />} />
@@ -84,9 +88,10 @@ function App() {
             />
           </Route>
 
-          {/* Catch-all redirect */}
-          <Route path="*" element={<Navigate to={ROUTES.LOGIN} replace />} />
+          {/* Catch-all route to NotFound */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
+        </ErrorBoundary>
       </AuthProvider>
     </BrowserRouter>
   );

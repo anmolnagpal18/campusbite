@@ -7,6 +7,7 @@ import { DataTable } from '../components/common/DataTable';
 import { Button } from '../components/common/Button';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { Store, ShieldAlert, Check, X, Calendar } from 'lucide-react';
+import { RevenueChart, OrderVolumeChart } from '../components/common/DashboardCharts';
 import toast from 'react-hot-toast';
 
 export const CollegeAdminDashboard = () => {
@@ -111,6 +112,12 @@ export const CollegeAdminDashboard = () => {
           value={loadingStats ? '...' : stats?.total_restaurants} 
           icon={<Store className="h-6 w-6 text-indigo-400" />} 
         />
+      </div>
+
+      {/* Dashboard Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RevenueChart revenue={0} />
+        <OrderVolumeChart preparing={0} ready={0} />
       </div>
 
       <div className="glass-card p-6 rounded-3xl border border-white/5 shadow-2xl">
