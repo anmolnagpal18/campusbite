@@ -95,31 +95,36 @@ export const VendorDashboard = () => {
         description="Monitor staff, track orders, and view stall statistics."
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard 
-          title="Staff Pending" 
-          value={loadingStats ? '...' : stats?.pending_staff} 
-          icon={<ShieldAlert className="h-6 w-6 text-amber-400 animate-pulse" />} 
-        />
-        <StatCard 
-          title="Staff Active" 
-          value={loadingStats ? '...' : stats?.approved_staff} 
-          icon={<ChefHat className="h-6 w-6 text-emerald-400" />} 
-        />
-        <StatCard 
-          title="Orders Preparing" 
-          value={loadingStats ? '...' : stats?.preparing_orders} 
+          title="Today's Orders" 
+          value={loadingStats ? '...' : stats?.today_orders} 
           icon={<ChefHat className="h-6 w-6 text-purple-400" />} 
         />
         <StatCard 
-          title="Orders Ready" 
-          value={loadingStats ? '...' : stats?.ready_orders} 
+          title="Today's Revenue" 
+          value={loadingStats ? '...' : `$${parseFloat(stats?.today_revenue || 0).toFixed(2)}`} 
+          icon={<ChefHat className="h-6 w-6 text-emerald-500" />} 
+        />
+        <StatCard 
+          title="Categories" 
+          value={loadingStats ? '...' : stats?.total_categories} 
           icon={<ChefHat className="h-6 w-6 text-indigo-400" />} 
         />
         <StatCard 
-          title="Today's Revenue" 
-          value={loadingStats ? '...' : `$${stats?.today_revenue.toFixed(2)}`} 
-          icon={<ChefHat className="h-6 w-6 text-emerald-500" />} 
+          title="Food Items" 
+          value={loadingStats ? '...' : stats?.total_items} 
+          icon={<ChefHat className="h-6 w-6 text-amber-400" />} 
+        />
+        <StatCard 
+          title="Available Items" 
+          value={loadingStats ? '...' : stats?.available_items} 
+          icon={<ChefHat className="h-6 w-6 text-emerald-400" />} 
+        />
+        <StatCard 
+          title="Staff Pending" 
+          value={loadingStats ? '...' : stats?.pending_staff} 
+          icon={<ShieldAlert className={`h-6 w-6 text-rose-400 ${stats?.pending_staff > 0 ? 'animate-pulse' : ''}`} />} 
         />
       </div>
 
@@ -127,8 +132,8 @@ export const VendorDashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <RevenueChart revenue={stats?.today_revenue || 0} />
         <OrderVolumeChart 
-          preparing={stats?.preparing_orders || 0} 
-          ready={stats?.ready_orders || 0} 
+          preparing={0} 
+          ready={0} 
         />
       </div>
 

@@ -51,6 +51,8 @@ const DashboardLayout = () => {
       case 'VENDOR':
         return [
           { name: 'Dashboard', path: ROUTES.VENDOR_DASHBOARD, icon: <LayoutDashboard className="h-5 w-5" /> },
+          { name: 'My Shop', path: ROUTES.MY_SHOP, icon: <Store className="h-5 w-5" /> },
+          { name: 'Menu Management', path: ROUTES.MENU_MANAGEMENT, icon: <ChefHat className="h-5 w-5" /> },
         ];
       case 'STAFF':
         return [

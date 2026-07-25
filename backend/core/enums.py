@@ -29,3 +29,16 @@ class NotificationType(models.TextChoices):
     ORDER_UPDATE = 'ORDER_UPDATE', 'Order Update'
     APPROVAL_STATUS = 'APPROVAL_STATUS', 'Approval Status'
     SYSTEM_ALERT = 'SYSTEM_ALERT', 'System Alert'
+
+class ShopStatus(models.TextChoices):
+    OPEN = 'OPEN', 'Open'
+    CLOSED = 'CLOSED', 'Closed'
+
+class CategoryStatus(models.TextChoices):
+    ACTIVE = 'ACTIVE', 'Active'
+    INACTIVE = 'INACTIVE', 'Inactive'
+
+class ItemAvailability(models.TextChoices):
+    AVAILABLE = 'AVAILABLE', 'Available'
+    OUT_OF_STOCK = 'OUT_OF_STOCK', 'Out of Stock'
+

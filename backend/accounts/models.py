@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
 from college.models import College
-from core.enums import Role, ApprovalStatus
+from core.enums import Role, ApprovalStatus, ShopStatus
 from core.mixins import TimestampedSoftDeletedModel
 
 class UserManager(BaseUserManager):
@@ -86,19 +86,32 @@ class VendorProfile(TimestampedSoftDeletedModel):
     status = models.CharField(max_length=20, choices=ApprovalStatus.choices, default=ApprovalStatus.PENDING)
 
     def __str__(self):
-        shop_name = getattr(self.restaurant, 'name', 'No Restaurant') if hasattr(self, 'restaurant') else 'No Restaurant'
+        shop_name = getattr(self.restaurant, 'restaurant_name', 'No Restaurant') if hasattr(self, 'restaurant') else 'No Restaurant'
         return f"Vendor Profile for {shop_name} ({self.user.email})"
 
 class Restaurant(TimestampedSoftDeletedModel):
     vendor = models.OneToOneField(VendorProfile, on_delete=models.CASCADE, related_name='restaurant')
-    name = models.CharField(max_length=255)
+    restaurant_name = models.CharField(max_length=255)
     shop_area = models.CharField(max_length=255)
     block = models.CharField(max_length=255)
     opening_time = models.TimeField(null=True, blank=True)
     closing_time = models.TimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=ShopStatus.choices, default=ShopStatus.OPEN)
+
+    @property
+    def is_currently_open(self):
+        if self.status != ShopStatus.OPEN:
+            return False
+        if not self.opening_time or not self.closing_time:
+            return True
+        current_time = timezone.localtime(timezone.now()).time()
+        if self.opening_time <= self.closing_time:
+            return self.opening_time <= current_time <= self.closing_time
+        else:
+            return current_time >= self.opening_time or current_time <= self.closing_time
 
     def __str__(self):
-        return self.name
+        return self.restaurant_name
 
 class StaffProfile(TimestampedSoftDeletedModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='staff_profile')

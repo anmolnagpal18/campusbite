@@ -8,10 +8,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.pagination import PageNumberPagination
 
 from college.models import College
-from core.enums import Role, ApprovalStatus
+from core.enums import Role, ApprovalStatus, ItemAvailability
 from accounts.models import (
     CollegeAdminProfile, VendorProfile, StaffProfile, UserProfile
 )
+from vendor.models import FoodCategory, FoodItem
 from api.serializers import (
     CollegeSerializer, VendorSelectSerializer, CustomTokenObtainPairSerializer,
     UserSignupSerializer, CollegeAdminSignupSerializer, VendorSignupSerializer,
@@ -281,12 +282,24 @@ class VendorDashboardStatsView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsVendor]
     def get(self, request):
         vendor_profile = request.user.vendor_profile
+        restaurant = getattr(vendor_profile, 'restaurant', None)
+        
+        total_categories = 0
+        total_items = 0
+        available_items = 0
+        
+        if restaurant:
+            total_categories = FoodCategory.objects.filter(restaurant=restaurant).count()
+            total_items = FoodItem.objects.filter(category__restaurant=restaurant).count()
+            available_items = FoodItem.objects.filter(category__restaurant=restaurant, availability=ItemAvailability.AVAILABLE).count()
+            
         stats = {
+            "total_categories": total_categories,
+            "total_items": total_items,
+            "available_items": available_items,
+            "today_orders": 0,
+            "today_revenue": 0.00,
             "pending_staff": StaffProfile.objects.filter(vendor=vendor_profile, status=ApprovalStatus.PENDING).count(),
-            "approved_staff": StaffProfile.objects.filter(vendor=vendor_profile, status=ApprovalStatus.APPROVED).count(),
-            "preparing_orders": 0,
-            "ready_orders": 0,
-            "today_revenue": 0.00
         }
         return Response(stats)
 

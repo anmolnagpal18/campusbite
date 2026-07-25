@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
 from api.views import (
     CollegeListView, VendorListView, CustomTokenObtainPairView,
@@ -12,6 +12,9 @@ from api.views import (
 )
 
 urlpatterns = [
+    # Include Vendor app URLs
+    path('', include('vendor.urls')),
+
     # Helper lists
     path('v1/colleges/', CollegeListView.as_view(), name='colleges-list'),
     path('v1/vendors/', VendorListView.as_view(), name='vendors-list'),

@@ -14,9 +14,11 @@ import Approval from './pages/Approval';
 import UserDashboard from './pages/UserDashboard';
 import VendorDashboard from './pages/VendorDashboard';
 import StaffDashboard from './pages/StaffDashboard';
-import CollegeAdminDashboard from './pages/CollegeAdminDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import CollegeAdminDashboard from './pages/CollegeAdminDashboard';
 import NotFound from './pages/NotFound';
+import MyShop from './pages/MyShop';
+import MenuManagement from './pages/MenuManagement';
 
 function App() {
   return (
@@ -59,6 +61,22 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['VENDOR']}>
                   <VendorDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path={ROUTES.MY_SHOP} 
+              element={
+                <ProtectedRoute allowedRoles={['VENDOR']}>
+                  <MyShop />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path={ROUTES.MENU_MANAGEMENT} 
+              element={
+                <ProtectedRoute allowedRoles={['VENDOR']}>
+                  <MenuManagement />
                 </ProtectedRoute>
               } 
             />
