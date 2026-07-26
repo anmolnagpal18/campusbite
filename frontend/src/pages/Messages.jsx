@@ -24,7 +24,17 @@ export const Messages = () => {
   const [messageInput, setMessageInput] = useState('');
   const [sending, setSending] = useState(false);
 
+  // Pagination states
+  const [msgPage, setMsgPage] = useState(1);
+  const [hasMoreMsgs, setHasMoreMsgs] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Typing & Online status placeholders
+  const [isTyping, setIsTyping] = useState(false); // Can be bound to socket event listener later
+
   const messagesEndRef = useRef(null);
+  const chatScrollContainerRef = useRef(null);
+  const previousScrollHeightRef = useRef(0);
 
   const fetchConversations = async (showLoading = false) => {
     if (showLoading) setLoadingConvs(true);
@@ -33,12 +43,10 @@ export const Messages = () => {
       if (res && res.success && res.data) {
         setConversations(res.data);
         
-        // If initialConversationId was provided in URL query, auto-select it
         if (initialConversationId && !activeConv) {
           const matched = res.data.find(c => String(c.id) === String(initialConversationId));
           if (matched) {
             handleSelectConversation(matched);
-            // Clear parameter after auto-selection
             setSearchParams({});
           }
         }
@@ -50,42 +58,79 @@ export const Messages = () => {
     }
   };
 
-  const fetchMessages = async (convId, silent = false) => {
-    if (!silent) setLoadingMsgs(true);
+  const fetchMessages = async (convId, page = 1, append = false, silent = false) => {
+    if (page === 1 && !silent) {
+      setLoadingMsgs(true);
+    } else if (page > 1) {
+      setLoadingMore(true);
+    }
+    
     try {
-      const res = await chatService.getMessages(convId);
+      const res = await chatService.getMessages(convId, page);
       if (res && res.success && res.data) {
-        setMessages(res.data);
+        const results = res.data.results || res.data;
+        const next = res.data.next;
+
+        if (append) {
+          // Prepend older messages
+          setMessages(prev => [...results, ...prev]);
+        } else {
+          setMessages(results);
+        }
+        
+        setHasMoreMsgs(!!next);
+        setMsgPage(page);
       }
     } catch (err) {
       console.error(err);
     } finally {
-      if (!silent) setLoadingMsgs(false);
+      setLoadingMsgs(false);
+      setLoadingMore(false);
     }
   };
 
-  // Poll conversations and messages every 4 seconds to simulate real-time updates
+  // Poll conversation list and active conversation messages periodically
   useEffect(() => {
     fetchConversations(true);
 
     const interval = setInterval(() => {
       fetchConversations(false);
       if (activeConv) {
-        fetchMessages(activeConv.id, true);
+        // Poll for new messages (keep it page 1 to fetch latest messages)
+        fetchMessages(activeConv.id, 1, false, true);
       }
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [searchQuery]);
+  }, [searchQuery, activeConv?.id]);
 
-  // Auto-scroll to bottom of chat when messages change
+  // Adjust scroll position after pagination prepend
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatScrollContainerRef.current && msgPage > 1) {
+      const container = chatScrollContainerRef.current;
+      container.scrollTop = container.scrollHeight - previousScrollHeightRef.current;
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   const handleSelectConversation = (conv) => {
     setActiveConv(conv);
-    fetchMessages(conv.id);
+    setMsgPage(1);
+    setHasMoreMsgs(false);
+    fetchMessages(conv.id, 1);
+  };
+
+  const handleScroll = () => {
+    if (!chatScrollContainerRef.current || loadingMore || !hasMoreMsgs || !activeConv) return;
+    
+    const container = chatScrollContainerRef.current;
+    
+    // If scrolled to top (threshold 5px)
+    if (container.scrollTop <= 5) {
+      previousScrollHeightRef.current = container.scrollHeight;
+      fetchMessages(activeConv.id, msgPage + 1, true);
+    }
   };
 
   const handleSendMessage = async (e) => {
@@ -199,15 +244,22 @@ export const Messages = () => {
                 </button>
                 <div>
                   <h3 className="text-sm font-bold text-gray-100">{getRecipient(activeConv).email}</h3>
-                  <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest">
-                    {formatRoleLabel(getRecipient(activeConv).role)}
-                  </span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest">
+                      {formatRoleLabel(getRecipient(activeConv).role)}
+                    </span>
+                    <span className="text-[9px] text-gray-400 font-semibold">• Status unavailable</span>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Messages Body */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div 
+              ref={chatScrollContainerRef}
+              onScroll={handleScroll}
+              className="flex-1 overflow-y-auto p-6 space-y-4"
+            >
               {loadingMsgs ? (
                 <div className="h-full flex items-center justify-center"><Loader size="md" /></div>
               ) : messages.length === 0 ? (
@@ -219,31 +271,43 @@ export const Messages = () => {
                   <p className="text-xs text-gray-400 max-w-xs">Send your first message to begin the conversation.</p>
                 </div>
               ) : (
-                messages.map((msg, index) => {
-                  const isOwn = msg.sender === user.id;
-                  return (
-                    <div
-                      key={msg.id || index}
-                      className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div className={`max-w-[70%] p-3.5 rounded-2xl leading-relaxed text-xs shadow-lg ${isOwn ? 'bg-purple-600/90 text-white rounded-tr-none' : 'bg-white/5 border border-white/5 text-gray-200 rounded-tl-none'}`}>
-                        <p>{msg.content}</p>
-                        <div className="flex items-center justify-end gap-1.5 mt-2 text-[9px] text-gray-300 font-semibold">
-                          <span>
-                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          {isOwn && (
-                            msg.read_at ? (
-                              <CheckCheck className="h-3 w-3 text-emerald-400" />
-                            ) : (
-                              <Check className="h-3 w-3 text-gray-400" />
-                            )
-                          )}
+                <>
+                  {loadingMore && (
+                    <div className="py-2 flex justify-center"><Loader size="xs" /></div>
+                  )}
+                  {messages.map((msg, index) => {
+                    const isOwn = msg.sender === user.id;
+                    return (
+                      <div
+                        key={msg.id || index}
+                        className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div className={`max-w-[70%] p-3.5 rounded-2xl leading-relaxed text-xs shadow-lg ${isOwn ? 'bg-purple-600/90 text-white rounded-tr-none' : 'bg-white/5 border border-white/5 text-gray-200 rounded-tl-none'}`}>
+                          <p>{msg.content}</p>
+                          <div className="flex items-center justify-end gap-1.5 mt-2 text-[9px] text-gray-300 font-semibold">
+                            <span>
+                              {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {isOwn && (
+                              msg.read_at ? (
+                                <CheckCheck className="h-3 w-3 text-emerald-400" />
+                              ) : (
+                                <Check className="h-3 w-3 text-gray-400" />
+                              )
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                </>
+              )}
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="text-[10px] text-purple-400 font-semibold animate-pulse bg-purple-500/5 px-3 py-1.5 rounded-xl border border-purple-500/10">
+                    {getRecipient(activeConv).email.split('@')[0]} is typing...
+                  </div>
+                </div>
               )}
               <div ref={messagesEndRef} />
             </div>

@@ -27,6 +27,12 @@ class Message(TimestampedSoftDeletedModel):
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
     content = models.TextField()
     read_at = models.DateTimeField(null=True, blank=True)
+    
+    # Attachment fields
+    attachment = models.FileField(upload_to="chat_attachments/", null=True, blank=True)
+    attachment_name = models.CharField(max_length=255, blank=True, null=True)
+    attachment_type = models.CharField(max_length=50, blank=True, null=True)
+    attachment_size = models.PositiveIntegerField(blank=True, null=True)
 
     class Meta:
         ordering = ['created_at']

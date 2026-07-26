@@ -15,8 +15,10 @@ export const chatService = {
     return response.data;
   },
 
-  getMessages: async (conversationId) => {
-    const response = await apiClient.get(`/v1/chat/messages/${conversationId}/`);
+  getMessages: async (conversationId, page = 1) => {
+    const response = await apiClient.get(`/v1/chat/messages/${conversationId}/`, {
+      params: { page }
+    });
     return response.data;
   },
 
@@ -30,6 +32,11 @@ export const chatService = {
 
   markRead: async (messageId) => {
     const response = await apiClient.put(`/v1/chat/messages/${messageId}/read/`);
+    return response.data;
+  },
+
+  getUnreadCount: async () => {
+    const response = await apiClient.get('/v1/chat/unread-count/');
     return response.data;
   }
 };

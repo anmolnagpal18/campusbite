@@ -124,6 +124,10 @@ REST_FRAMEWORK = {
     ),
     'EXCEPTION_HANDLER': 'api.exceptions.standardized_exception_handler',
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_RATES': {
+        'chat_burst': '10/minute',
+        'chat_sustained': '60/minute',
+    }
 }
 
 SPECTACULAR_SETTINGS = {

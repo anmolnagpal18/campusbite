@@ -1,16 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   LayoutDashboard, Users, LogOut, Menu, X, Building, Store, Shield, ChefHat, MessageSquare
 } from 'lucide-react';
 import ROUTES from '../routes/constants';
+import chatService from '../services/chat';
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user || user.role === 'USER') return;
+
+    const fetchUnread = async () => {
+      try {
+        const res = await chatService.getUnreadCount();
+        if (res && res.success && res.data) {
+          setUnreadCount(res.data.total_unread);
+        }
+      } catch (err) {
+        console.error('Failed to load unread messages count', err);
+      }
+    };
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 5000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const handleLogout = async () => {
     await logout();
@@ -129,7 +150,12 @@ const DashboardLayout = () => {
                 `}
               >
                 {link.icon}
-                {link.name}
+                <span>{link.name}</span>
+                {link.name === 'Messages' && unreadCount > 0 && (
+                  <span className="ml-auto bg-purple-500 text-white font-bold text-[10px] px-2 py-0.5 rounded-full min-w-5 text-center leading-none">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </button>
             );
           })}
