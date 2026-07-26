@@ -14,8 +14,8 @@ export const MyShop = () => {
   const fetchShopDetails = async () => {
     try {
       const res = await vendorShopService.getShopDetails();
-      if (res) {
-        setShopData(res);
+      if (res && res.success) {
+        setShopData(res.data);
       }
     } catch (err) {
       toast.error('Failed to load shop details.');
@@ -32,8 +32,8 @@ export const MyShop = () => {
     setSaving(true);
     try {
       const res = await vendorShopService.updateShopDetails(formData);
-      if (res) {
-        setShopData(res);
+      if (res && res.success) {
+        setShopData(res.data);
         toast.success('Shop Updated Successfully');
       }
     } catch (err) {

@@ -60,8 +60,10 @@ export const MenuManagement = () => {
 
   const fetchRestaurant = async () => {
     try {
-      const data = await vendorShopService.getShopDetails();
-      setRestaurant(data);
+      const res = await vendorShopService.getShopDetails();
+      if (res && res.success) {
+        setRestaurant(res.data);
+      }
     } catch (err) {
       console.error('Failed to load restaurant info', err);
     }
@@ -71,9 +73,9 @@ export const MenuManagement = () => {
     setCatLoading(true);
     try {
       const res = await categoryService.getCategories(catPage, catSearch);
-      if (res && res.results) {
-        setCategories(res.results);
-        setCatTotal(res.count);
+      if (res && res.success && res.data) {
+        setCategories(res.data.results);
+        setCatTotal(res.data.count);
       }
     } catch (err) {
       toast.error('Failed to load categories.');
@@ -92,9 +94,9 @@ export const MenuManagement = () => {
         itemAvailability, 
         itemPageSize
       );
-      if (res && res.results) {
-        setItems(res.results);
-        setItemTotal(res.count);
+      if (res && res.success && res.data) {
+        setItems(res.data.results);
+        setItemTotal(res.data.count);
       }
     } catch (err) {
       toast.error('Failed to load food items.');
@@ -109,11 +111,11 @@ export const MenuManagement = () => {
       const catRes = await categoryService.getCategories(1, '');
       const itemsRes = await foodItemService.getFoodItems(1, '', '', '', 200);
       
-      if (catRes && catRes.results) {
-        setAllCategories(catRes.results);
+      if (catRes && catRes.success && catRes.data) {
+        setAllCategories(catRes.data.results);
       }
-      if (itemsRes && itemsRes.results) {
-        setAllItems(itemsRes.results);
+      if (itemsRes && itemsRes.success && itemsRes.data) {
+        setAllItems(itemsRes.data.results);
       }
     } catch (err) {
       console.error('Preview sync failed', err);
@@ -286,10 +288,10 @@ export const MenuManagement = () => {
             {hasNoCategories ? (
               <EmptyState
                 title="Your menu is empty."
-                description="Create your first category to start adding food items."
+                message="Create your first category to start adding food items."
                 icon={<ChefHat className="h-12 w-12 text-purple-400" />}
                 actionText="Add Category"
-                onAction={() => {
+                onActionClick={() => {
                   setEditingCat(null);
                   setCatModalOpen(true);
                 }}
