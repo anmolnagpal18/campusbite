@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'authentication',
     'chat',
     'ordering',
+    'bots',
 ]
 
 MIDDLEWARE = [

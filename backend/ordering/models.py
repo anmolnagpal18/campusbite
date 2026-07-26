@@ -57,6 +57,7 @@ class Order(TimestampedSoftDeletedModel):
     grand_total = models.DecimalField(max_digits=10, decimal_places=2)
     
     payment_status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING, db_index=True)
+    ordering_platform = models.CharField(max_length=20, choices=[('WEB', 'Web'), ('TELEGRAM', 'Telegram'), ('WHATSAPP', 'WhatsApp')], default='WEB')
     qr_uuid = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True)
     qr_expired = models.BooleanField(default=False)
 

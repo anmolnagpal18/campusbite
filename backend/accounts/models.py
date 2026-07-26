@@ -33,6 +33,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     
+    # Bot integration fields
+    telegram_chat_id = models.CharField(max_length=255, null=True, blank=True, unique=True)
+    telegram_username = models.CharField(max_length=255, null=True, blank=True)
+    telegram_linked = models.BooleanField(default=False)
+    whatsapp_number = models.CharField(max_length=50, null=True, blank=True, unique=True)
+    whatsapp_linked = models.BooleanField(default=False)
+
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -132,3 +139,39 @@ class ApprovalLog(models.Model):
 
     def __str__(self):
         return f"{self.action} - {self.user.email} by {self.approved_by.email if self.approved_by else 'System'}"
+
+class BotSession(models.Model):
+    PLATFORM_CHOICES = [
+        ('TELEGRAM', 'Telegram'),
+        ('WHATSAPP', 'WhatsApp'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    platform = models.CharField(max_length=20, choices=PLATFORM_CHOICES)
+    session_id = models.CharField(max_length=255, unique=True)  # chat_id or phone number
+    state = models.CharField(max_length=100, default='START')
+    current_restaurant = models.ForeignKey(Restaurant, on_delete=models.SET_NULL, null=True, blank=True)
+    current_category = models.ForeignKey('vendor.FoodCategory', on_delete=models.SET_NULL, null=True, blank=True)
+    context_data = models.JSONField(default=dict, blank=True)
+    language = models.CharField(max_length=10, default='en')
+    last_message_id = models.IntegerField(null=True, blank=True)
+    last_bot_message_id = models.IntegerField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    last_interaction = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.platform} session: {self.session_id} ({self.state})"
+
+class NotificationDelivery(models.Model):
+    notification = models.ForeignKey('ordering.Notification', on_delete=models.CASCADE, related_name='deliveries')
+    channel = models.CharField(max_length=20, choices=[('TELEGRAM', 'Telegram'), ('WHATSAPP', 'WhatsApp')])
+    status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('SENT', 'Sent'), ('FAILED', 'Failed')])
+    attempts = models.PositiveIntegerField(default=0)
+    last_attempt = models.DateTimeField(null=True, blank=True)
+    provider_message_id = models.CharField(max_length=255, null=True, blank=True)
+    sent_at = models.DateTimeField(auto_now_add=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    error_message = models.TextField(null=True, blank=True)
+    response_payload = models.JSONField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.channel} delivery for Note {self.notification_id} ({self.status})"

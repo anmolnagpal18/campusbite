@@ -25,6 +25,9 @@ urlpatterns = [
     # Include Ordering app URLs
     path('v1/', include('ordering.urls')),
 
+    # Include Bots app URLs
+    path('v1/bot/', include('bots.urls')),
+
     # Helper lists
     path('v1/colleges/', CollegeListView.as_view(), name='colleges-list'),
     path('v1/vendors/', VendorListView.as_view(), name='vendors-list'),
