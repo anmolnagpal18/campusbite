@@ -172,15 +172,15 @@ class NotificationDispatcher:
                     time.sleep(delay)
 
 
-def send_bot_notification(user, title, message):
+def send_bot_notification(user, title, message, notification=None):
     """
     Standard backward-compatibility hook. Routes directly into the pluggable dispatcher.
     """
-    # Create system notification instance dynamically if not present
-    note = Notification.objects.create(
-        user=user,
-        title=title,
-        message=message,
-        notification_type=Notification.NotificationType.SYSTEM
-    )
-    NotificationDispatcher.dispatch(note, user, title, message)
+    if notification is None:
+        notification = Notification.objects.create(
+            user=user,
+            title=title,
+            message=message,
+            notification_type=Notification.NotificationType.SYSTEM
+        )
+    NotificationDispatcher.dispatch(notification, user, title, message)

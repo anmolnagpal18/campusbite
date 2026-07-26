@@ -15,7 +15,7 @@ def create_notification(user, title, message, notification_type=Notification.Not
     
     # Pluggable multi-channel bot dispatch
     try:
-        send_bot_notification(user, title, message)
+        send_bot_notification(user, title, message, notification=note)
     except Exception:
         pass
         
