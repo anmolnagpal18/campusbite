@@ -98,8 +98,8 @@ export const SuperAdminDashboard = () => {
       toast.loading('Initiating chat...');
       const res = await chatService.createConversation(admin.user_id);
       toast.dismiss();
-      if (res && res.id) {
-        navigate(`${ROUTES.MESSAGES}?conversationId=${res.id}`);
+      if (res && res.success && res.data && res.data.id) {
+        navigate(`${ROUTES.MESSAGES}?conversationId=${res.data.id}`);
       }
     } catch (err) {
       toast.dismiss();
