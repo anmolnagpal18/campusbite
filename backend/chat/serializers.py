@@ -29,7 +29,7 @@ class MessageSerializer(serializers.ModelSerializer):
             'content', 'read_at', 'created_at',
             'attachment', 'attachment_name', 'attachment_type', 'attachment_size'
         ]
-        read_only_fields = ['sender', 'attachment_name', 'attachment_type', 'attachment_size']
+        read_only_fields = ['sender', 'conversation', 'attachment_name', 'attachment_type', 'attachment_size']
 
     def validate_content(self, value):
         if value:
