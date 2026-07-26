@@ -9,7 +9,7 @@ User = get_user_model()
 class ParticipantUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'role', 'first_name', 'last_name']
+        fields = ['id', 'email', 'role']
 
 class ConversationParticipantSerializer(serializers.ModelSerializer):
     user = ParticipantUserSerializer(read_only=True)

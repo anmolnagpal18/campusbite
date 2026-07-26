@@ -93,8 +93,6 @@ class ConversationListCreateView(APIView):
         if q:
             conversations = conversations.filter(
                 models.Q(participants__user__email__icontains=q) |
-                models.Q(participants__user__first_name__icontains=q) |
-                models.Q(participants__user__last_name__icontains=q) |
                 models.Q(messages__content__icontains=q)
             ).distinct()
 
