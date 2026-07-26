@@ -21,6 +21,11 @@ class BotStates:
     PAYMENT = 'PAYMENT'
     ORDER_SUCCESS = 'ORDER_SUCCESS'
     EXPIRED = 'EXPIRED'
+    
+    LINK_OR_REGISTER = 'LINK_OR_REGISTER'
+    REG_EMAIL = 'REG_EMAIL'
+    REG_PASSWORD = 'REG_PASSWORD'
+    REG_CONFIRM = 'REG_CONFIRM'
 
 def get_or_create_session(session_id, platform):
     session, created = BotSession.objects.get_or_create(

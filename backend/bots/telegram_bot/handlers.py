@@ -22,12 +22,16 @@ def sync_start_handler(chat_id):
             "keyboard": keyboards.get_main_menu_keyboard()
         }
     else:
-        session.state = BotStates.LOGIN_EMAIL
+        session.state = BotStates.LINK_OR_REGISTER
         session.save()
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔗 Link Existing Account", callback_data="auth_link")],
+            [InlineKeyboardButton("📝 Register New Account", callback_data="auth_register")]
+        ])
         return {
             "action": "reply",
-            "text": "Welcome to CampusBite 2.0! Please link your account to start ordering.\n\nPlease enter your email address:",
-            "keyboard": None
+            "text": "Welcome to CampusBite 2.0! To start ordering, please link your existing account or register a new one:",
+            "keyboard": keyboard
         }
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -48,6 +52,18 @@ def sync_message_handler(chat_id, text):
         return {
             "action": "reply",
             "text": "⏳ *Your session expired due to 30 minutes of inactivity.*\nWould you like to recover your previous action or start a new order?",
+            "keyboard": keyboard
+        }
+
+    # LINK OR REGISTER STATE EXPLICIT PROMPT
+    if session.state == BotStates.LINK_OR_REGISTER:
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔗 Link Existing Account", callback_data="auth_link")],
+            [InlineKeyboardButton("📝 Register New Account", callback_data="auth_register")]
+        ])
+        return {
+            "action": "reply",
+            "text": "Please select whether you want to Link or Register:",
             "keyboard": keyboard
         }
 
@@ -79,6 +95,93 @@ def sync_message_handler(chat_id, text):
             return {
                 "action": "reply",
                 "text": f"❌ {msg}\nPlease enter your email address to try again:",
+                "keyboard": None
+            }
+
+    # Registration States
+    elif session.state == BotStates.REG_EMAIL:
+        email_str = text.strip()
+        if User.objects.filter(email=email_str).exists():
+            return {
+                "action": "reply",
+                "text": "❌ An account with this email already exists.\nPlease enter a different email address to register:",
+                "keyboard": None
+            }
+        session.context_data['reg_email'] = email_str
+        session.state = BotStates.REG_PASSWORD
+        session.save()
+        return {
+            "action": "reply",
+            "text": "Email accepted. Please enter a password (minimum 8 characters):",
+            "keyboard": None
+        }
+
+    elif session.state == BotStates.REG_PASSWORD:
+        pass_str = text.strip()
+        if len(pass_str) < 8:
+            return {
+                "action": "reply",
+                "text": "❌ Password must be at least 8 characters long. Please enter a stronger password:",
+                "keyboard": None
+            }
+        session.context_data['reg_password'] = pass_str
+        session.state = BotStates.REG_CONFIRM
+        session.save()
+        return {
+            "action": "reply",
+            "text": "Please confirm your password:",
+            "keyboard": None
+        }
+
+    elif session.state == BotStates.REG_CONFIRM:
+        confirm_str = text.strip()
+        reg_password = session.context_data.get('reg_password')
+        reg_email = session.context_data.get('reg_email')
+        
+        if confirm_str != reg_password:
+            session.state = BotStates.REG_PASSWORD
+            session.save()
+            return {
+                "action": "reply",
+                "text": "❌ Passwords do not match. Please enter your password again:",
+                "keyboard": None
+            }
+        
+        # Create user account and profile
+        from django.db import transaction
+        from authentication.models import UserProfile
+        from accounts.models import Role
+        
+        try:
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    email=reg_email,
+                    password=reg_password,
+                    role=Role.USER
+                )
+                UserProfile.objects.create(user=user)
+                
+                # Link account to Telegram
+                user.telegram_chat_id = session.session_id
+                user.telegram_linked = True
+                user.save()
+                
+                session.user = user
+                session.state = BotStates.MAIN_MENU
+                session.context_data = {}
+                session.save()
+                
+            return {
+                "action": "reply",
+                "text": f"🎉 *Registration Successful!*\n\nYour account *{reg_email}* has been created and linked to this Telegram session. You can now use these credentials to log in on the website too!\n\nSelect an option below to start ordering:",
+                "keyboard": keyboards.get_main_menu_keyboard()
+            }
+        except Exception as e:
+            session.state = BotStates.START
+            session.save()
+            return {
+                "action": "reply",
+                "text": f"❌ *Registration Error:* {str(e)}\nType /start to try again.",
                 "keyboard": None
             }
 
@@ -180,6 +283,24 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def sync_callback_query_handler(chat_id, data):
     session = get_or_create_session(chat_id, 'TELEGRAM')
+
+    if data == "auth_link":
+        session.state = BotStates.LOGIN_EMAIL
+        session.save()
+        return {
+            "action": "edit",
+            "text": "🔗 Please enter your email address to link your account:",
+            "keyboard": None
+        }
+        
+    elif data == "auth_register":
+        session.state = BotStates.REG_EMAIL
+        session.save()
+        return {
+            "action": "edit",
+            "text": "📝 Please enter a valid email address to register a new account:",
+            "keyboard": None
+        }
 
     if not check_session_auth(session):
         return {"action": "reply", "text": "Session expired. Please /start to link account."}
