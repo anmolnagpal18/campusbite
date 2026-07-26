@@ -19,6 +19,7 @@ import CollegeAdminDashboard from './pages/CollegeAdminDashboard';
 import NotFound from './pages/NotFound';
 import MyShop from './pages/MyShop';
 import MenuManagement from './pages/MenuManagement';
+import Messages from './pages/Messages';
 
 function App() {
   return (
@@ -101,6 +102,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
                   <SuperAdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path={ROUTES.MESSAGES} 
+              element={
+                <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'VENDOR', 'STAFF']}>
+                  <Messages />
                 </ProtectedRoute>
               } 
             />

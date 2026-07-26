@@ -172,25 +172,31 @@ class StaffSignupSerializer(serializers.Serializer):
 
 class CollegeAdminProfileSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
     college_name = serializers.CharField(source='college.name', read_only=True)
+    is_active = serializers.BooleanField(source='user.is_active', read_only=True)
     class Meta:
         model = CollegeAdminProfile
-        fields = ['id', 'user_email', 'college_name', 'status', 'created_at']
+        fields = ['id', 'user_id', 'user_email', 'college_name', 'status', 'is_active', 'created_at']
 
 class VendorProfileSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
     college_name = serializers.CharField(source='college.name', read_only=True)
-    shop_name = serializers.CharField(source='restaurant.name', read_only=True)
+    shop_name = serializers.CharField(source='restaurant.restaurant_name', read_only=True)
     shop_area = serializers.CharField(source='restaurant.shop_area', read_only=True)
     block = serializers.CharField(source='restaurant.block', read_only=True)
+    is_active = serializers.BooleanField(source='user.is_active', read_only=True)
     class Meta:
         model = VendorProfile
-        fields = ['id', 'uuid', 'user_email', 'college_name', 'shop_name', 'shop_area', 'block', 'status', 'created_at']
+        fields = ['id', 'uuid', 'user_id', 'user_email', 'college_name', 'shop_name', 'shop_area', 'block', 'status', 'is_active', 'created_at']
 
 class StaffProfileSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
-    vendor_shop = serializers.CharField(source='vendor.restaurant.name', read_only=True)
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    vendor_shop = serializers.CharField(source='vendor.restaurant.restaurant_name', read_only=True)
     vendor_owner = serializers.CharField(source='vendor.user.email', read_only=True)
+    is_active = serializers.BooleanField(source='user.is_active', read_only=True)
     class Meta:
         model = StaffProfile
-        fields = ['id', 'user_email', 'vendor_shop', 'vendor_owner', 'status', 'created_at']
+        fields = ['id', 'user_id', 'user_email', 'vendor_shop', 'vendor_owner', 'status', 'is_active', 'created_at']

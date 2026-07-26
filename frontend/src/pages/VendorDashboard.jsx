@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import dashboardService from '../services/dashboard';
 import staffService from '../services/staff';
+import deactivationService from '../services/deactivation';
+import chatService from '../services/chat';
+import ROUTES from '../routes/constants';
+
 import { PageHeader } from '../components/common/PageHeader';
 import { StatCard } from '../components/common/StatCard';
 import { DataTable } from '../components/common/DataTable';
 import { Button } from '../components/common/Button';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
-import { ChefHat, ShieldAlert, Check, X, Calendar } from 'lucide-react';
+import { ChefHat, ShieldAlert, Check, X, Calendar, MessageSquare, ShieldCheck } from 'lucide-react';
 import { RevenueChart, OrderVolumeChart } from '../components/common/DashboardCharts';
 import toast from 'react-hot-toast';
 
 export const VendorDashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [pendingStaff, setPendingStaff] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -19,9 +25,14 @@ export const VendorDashboard = () => {
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingTable, setLoadingTable] = useState(true);
 
+  // Active Staff States
+  const [activeStaffList, setActiveStaffList] = useState([]);
+  const [loadingStaffList, setLoadingStaffList] = useState(true);
+
+  // Modals
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedStaffId, setSelectedStaffId] = useState(null);
-  const [actionType, setActionType] = useState('approve');
+  const [actionType, setActionType] = useState('approve'); // approve, reject, deactivate, restore
 
   const fetchStats = async () => {
     try {
@@ -51,8 +62,23 @@ export const VendorDashboard = () => {
     }
   };
 
+  const fetchActiveStaffList = async () => {
+    setLoadingStaffList(true);
+    try {
+      const res = await deactivationService.getStaffList();
+      // Filter out any status that is PENDING (only show APPROVED/REJECTED staff here)
+      const approvedStaff = res.filter(s => s.status === 'APPROVED');
+      setActiveStaffList(approvedStaff);
+    } catch (err) {
+      toast.error('Failed to load staff list.');
+    } finally {
+      setLoadingStaffList(false);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
+    fetchActiveStaffList();
   }, []);
 
   useEffect(() => {
@@ -65,26 +91,59 @@ export const VendorDashboard = () => {
     setConfirmOpen(true);
   };
 
+  const handleMessageStaff = async (staffUser) => {
+    try {
+      toast.loading('Initiating chat...');
+      const res = await chatService.createConversation(staffUser.user_id);
+      toast.dismiss();
+      if (res && res.id) {
+        navigate(`${ROUTES.MESSAGES}?conversationId=${res.id}`);
+      }
+    } catch (err) {
+      toast.dismiss();
+      const errMsg = err.response?.data?.detail || 'Failed to initiate conversation.';
+      toast.error(errMsg);
+    }
+  };
+
   const handleConfirmAction = async () => {
     try {
       if (actionType === 'approve') {
         await staffService.approveStaff(selectedStaffId);
         toast.success('Staff member approved successfully!');
-      } else {
+      } else if (actionType === 'reject') {
         await staffService.rejectStaff(selectedStaffId);
-        toast.success('Staff member rejected.');
+        toast.success('Staff application rejected.');
+      } else if (actionType === 'deactivate') {
+        await deactivationService.deactivateStaff(selectedStaffId);
+        toast.success('Staff member deactivated successfully!');
+      } else if (actionType === 'restore') {
+        await deactivationService.restoreStaff(selectedStaffId);
+        toast.success('Staff member account restored!');
       }
+      
       fetchPendingStaff();
+      fetchActiveStaffList();
       fetchStats();
     } catch (err) {
       toast.error(`Action failed.`);
+    } finally {
+      setConfirmOpen(false);
+      setSelectedStaffId(null);
     }
   };
 
-  const headers = [
+  const pendingHeaders = [
     { label: 'Email' },
     { label: 'Stall Linking' },
     { label: 'Registered On' },
+    { label: 'Actions', className: 'text-right' }
+  ];
+
+  const staffHeaders = [
+    { label: 'Email' },
+    { label: 'Stall Linking' },
+    { label: 'Account Status' },
     { label: 'Actions', className: 'text-right' }
   ];
 
@@ -98,23 +157,23 @@ export const VendorDashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard 
           title="Today's Orders" 
-          value={loadingStats ? '...' : stats?.today_orders} 
+          value={loadingStats ? '...' : stats?.today_orders || 0} 
           icon={<ChefHat className="h-6 w-6 text-purple-400" />} 
         />
         <StatCard 
           title="Today's Revenue" 
-          value={loadingStats ? '...' : `$${parseFloat(stats?.today_revenue || 0).toFixed(2)}`} 
-          icon={<ChefHat className="h-6 w-6 text-emerald-500" />} 
+          value={loadingStats ? '...' : `$${stats?.today_revenue?.toFixed(2)}`} 
+          icon={<ChefHat className="h-6 w-6 text-emerald-400" />} 
         />
         <StatCard 
-          title="Categories" 
+          title="Total Categories" 
           value={loadingStats ? '...' : stats?.total_categories} 
-          icon={<ChefHat className="h-6 w-6 text-indigo-400" />} 
+          icon={<ChefHat className="h-6 w-6 text-purple-400" />} 
         />
         <StatCard 
-          title="Food Items" 
+          title="Total Food Items" 
           value={loadingStats ? '...' : stats?.total_items} 
-          icon={<ChefHat className="h-6 w-6 text-amber-400" />} 
+          icon={<ChefHat className="h-6 w-6 text-blue-400" />} 
         />
         <StatCard 
           title="Available Items" 
@@ -175,72 +234,150 @@ export const VendorDashboard = () => {
         </div>
       </div>
 
-      <div className="glass-card p-6 rounded-3xl border border-white/5 shadow-2xl">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-            <ChefHat className="h-6 w-6 text-emerald-400" />
+      <div className="grid grid-cols-1 gap-6">
+        {/* Stall Staff Management Card */}
+        <div className="glass-card p-6 rounded-3xl border border-white/5 shadow-2xl">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 rounded-xl">
+              <ChefHat className="h-6 w-6 text-purple-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-100">Stall Staff Management</h2>
+              <p className="text-xs text-gray-400">View active staff members, message them directly, or deactivate accounts.</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-100">Pending Staff Approvals</h2>
-            <p className="text-xs text-gray-400">Review registration requests for staff members linking to your shop.</p>
-          </div>
+
+          <DataTable
+            headers={staffHeaders}
+            data={activeStaffList}
+            loading={loadingStaffList}
+            emptyMessage="No staff members registered yet."
+            renderRow={(staff) => (
+              <tr key={staff.id} className="hover:bg-white/[0.02] transition-colors">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">{staff.user_email}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-semibold">{staff.vendor_shop}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-xs">
+                  <span className={`px-2.5 py-1 rounded-full font-bold uppercase tracking-wider text-[9px] ${staff.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                    {staff.is_active ? 'Active' : 'Deactivated'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleMessageStaff(staff)}
+                    icon={<MessageSquare className="h-3.5 w-3.5" />}
+                  >
+                    Message
+                  </Button>
+                  {staff.is_active ? (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => handleAction(staff.id, 'deactivate')}
+                      icon={<X className="h-3.5 w-3.5" />}
+                    >
+                      Deactivate
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="success"
+                      size="sm"
+                      onClick={() => handleAction(staff.id, 'restore')}
+                      icon={<ShieldCheck className="h-3.5 w-3.5" />}
+                    >
+                      Restore
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            )}
+          />
         </div>
 
-        <DataTable
-          headers={headers}
-          data={pendingStaff}
-          loading={loadingTable}
-          emptyMessage="No pending staff approval requests."
-          searchVal={searchVal}
-          onSearchChange={(val) => {
-            setSearchVal(val);
-            setCurrentPage(1);
-          }}
-          searchPlaceholder="Search by email..."
-          currentPage={currentPage}
-          totalCount={totalCount}
-          onPageChange={setCurrentPage}
-          renderRow={(staff) => (
-            <tr key={staff.id} className="hover:bg-white/[0.02] transition-colors">
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">{staff.user_email}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-semibold">{staff.vendor_shop}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-400">
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-gray-500" />
-                  {new Date(staff.created_at).toLocaleDateString()}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                <Button
-                  variant="success"
-                  size="sm"
-                  onClick={() => handleAction(staff.id, 'approve')}
-                  icon={<Check className="h-3.5 w-3.5" />}
-                >
-                  Approve
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => handleAction(staff.id, 'reject')}
-                  icon={<X className="h-3.5 w-3.5" />}
-                >
-                  Reject
-                </Button>
-              </td>
-            </tr>
-          )}
-        />
+        {/* Pending Staff Approvals Card */}
+        <div className="glass-card p-6 rounded-3xl border border-white/5 shadow-2xl">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+              <ShieldAlert className="h-6 w-6 text-rose-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-100">Pending Staff Approvals</h2>
+              <p className="text-xs text-gray-400">Review registration requests for staff members linking to your shop.</p>
+            </div>
+          </div>
+
+          <DataTable
+            headers={pendingHeaders}
+            data={pendingStaff}
+            loading={loadingTable}
+            emptyMessage="No pending staff approval requests."
+            searchVal={searchVal}
+            onSearchChange={(val) => {
+              setSearchVal(val);
+              setCurrentPage(1);
+            }}
+            searchPlaceholder="Search by email..."
+            currentPage={currentPage}
+            totalCount={totalCount}
+            onPageChange={setCurrentPage}
+            renderRow={(staff) => (
+              <tr key={staff.id} className="hover:bg-white/[0.02] transition-colors">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">{staff.user_email}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-semibold">{staff.vendor_shop}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-400">
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-gray-500" />
+                    {new Date(staff.created_at).toLocaleDateString()}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                  <Button
+                    variant="success"
+                    size="sm"
+                    onClick={() => handleAction(staff.id, 'approve')}
+                    icon={<Check className="h-3.5 w-3.5" />}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => handleAction(staff.id, 'reject')}
+                    icon={<X className="h-3.5 w-3.5" />}
+                  >
+                    Reject
+                  </Button>
+                </td>
+              </tr>
+            )}
+          />
+        </div>
       </div>
 
       <ConfirmDialog
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         onConfirm={handleConfirmAction}
-        type={actionType === 'reject' ? 'danger' : 'primary'}
-        title={actionType === 'approve' ? 'Approve Staff Member' : 'Reject Staff Member'}
-        message={`Are you sure you want to ${actionType} this Staff Member? This action cannot be undone.`}
-        confirmText={actionType === 'approve' ? 'Approve' : 'Reject'}
+        type={['reject', 'deactivate'].includes(actionType) ? 'danger' : 'primary'}
+        title={
+          actionType === 'approve' ? 'Approve Staff Member' :
+          actionType === 'reject' ? 'Reject Staff Member' :
+          actionType === 'deactivate' ? 'Deactivate Staff?' :
+          'Restore Staff?'
+        }
+        message={
+          actionType === 'approve' ? 'Are you sure you want to approve this Staff Member? This action cannot be undone.' :
+          actionType === 'reject' ? 'Are you sure you want to reject this Staff Member? This action cannot be undone.' :
+          actionType === 'deactivate' ? "This will disable the staff's login credentials. They will no longer be able to access the staff dashboard." :
+          "Are you sure you want to restore access for this staff member?"
+        }
+        confirmText={
+          actionType === 'approve' ? 'Approve' :
+          actionType === 'reject' ? 'Reject' :
+          actionType === 'deactivate' ? 'Deactivate' :
+          'Restore'
+        }
       />
     </div>
   );

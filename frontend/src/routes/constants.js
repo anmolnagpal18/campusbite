@@ -8,6 +8,7 @@ export const ROUTES = {
   COLLEGE_ADMIN_DASHBOARD: '/college-admin/dashboard',
   SUPER_ADMIN_DASHBOARD: '/super-admin/dashboard',
   MY_SHOP: '/vendor/shop',
-  MENU_MANAGEMENT: '/vendor/menu'
+  MENU_MANAGEMENT: '/vendor/menu',
+  MESSAGES: '/messages'
 };
 export default ROUTES;

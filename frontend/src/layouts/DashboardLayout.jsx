@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
-  LayoutDashboard, Users, LogOut, Menu, X, Building, Store, Shield, ChefHat
+  LayoutDashboard, Users, LogOut, Menu, X, Building, Store, Shield, ChefHat, MessageSquare
 } from 'lucide-react';
 import ROUTES from '../routes/constants';
 
@@ -43,20 +43,24 @@ const DashboardLayout = () => {
       case 'SUPER_ADMIN':
         return [
           { name: 'Dashboard', path: ROUTES.SUPER_ADMIN_DASHBOARD, icon: <LayoutDashboard className="h-5 w-5" /> },
+          { name: 'Messages', path: ROUTES.MESSAGES, icon: <MessageSquare className="h-5 w-5" /> },
         ];
       case 'COLLEGE_ADMIN':
         return [
           { name: 'Dashboard', path: ROUTES.COLLEGE_ADMIN_DASHBOARD, icon: <LayoutDashboard className="h-5 w-5" /> },
+          { name: 'Messages', path: ROUTES.MESSAGES, icon: <MessageSquare className="h-5 w-5" /> },
         ];
       case 'VENDOR':
         return [
           { name: 'Dashboard', path: ROUTES.VENDOR_DASHBOARD, icon: <LayoutDashboard className="h-5 w-5" /> },
           { name: 'My Shop', path: ROUTES.MY_SHOP, icon: <Store className="h-5 w-5" /> },
           { name: 'Menu Management', path: ROUTES.MENU_MANAGEMENT, icon: <ChefHat className="h-5 w-5" /> },
+          { name: 'Messages', path: ROUTES.MESSAGES, icon: <MessageSquare className="h-5 w-5" /> },
         ];
       case 'STAFF':
         return [
           { name: 'Dashboard', path: ROUTES.STAFF_DASHBOARD, icon: <LayoutDashboard className="h-5 w-5" /> },
+          { name: 'Messages', path: ROUTES.MESSAGES, icon: <MessageSquare className="h-5 w-5" /> },
         ];
       case 'USER':
         return [

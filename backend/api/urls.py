@@ -8,12 +8,19 @@ from api.views import (
     PendingVendorsView, ApproveVendorView, RejectVendorView,
     PendingStaffView, ApproveStaffView, RejectStaffView,
     SuperAdminDashboardStatsView, CollegeAdminDashboardStatsView,
-    VendorDashboardStatsView, StaffDashboardStatsView
+    VendorDashboardStatsView, StaffDashboardStatsView,
+    VendorStaffDeactivationView, VendorStaffDeactivateActionView, VendorStaffRestoreActionView,
+    CollegeAdminVendorDeactivationView, CollegeAdminVendorDeactivateActionView, CollegeAdminVendorRestoreActionView,
+    SuperAdminCollegeAdminDeactivationView, SuperAdminCollegeAdminDeactivateActionView, SuperAdminCollegeAdminRestoreActionView,
+    StaffSelfDeactivateView
 )
 
 urlpatterns = [
     # Include Vendor app URLs
     path('', include('vendor.urls')),
+
+    # Include Chat app URLs
+    path('v1/chat/', include('chat.urls')),
 
     # Helper lists
     path('v1/colleges/', CollegeListView.as_view(), name='colleges-list'),
@@ -51,4 +58,19 @@ urlpatterns = [
     path('v1/dashboard/college-admin/', CollegeAdminDashboardStatsView.as_view(), name='college-admin-stats'),
     path('v1/dashboard/vendor/', VendorDashboardStatsView.as_view(), name='vendor-stats'),
     path('v1/dashboard/staff/', StaffDashboardStatsView.as_view(), name='staff-stats'),
+
+    # Deactivations
+    path('v1/vendor/staff/', VendorStaffDeactivationView.as_view(), name='vendor-staff-deactivation-list'),
+    path('v1/vendor/staff/<int:pk>/deactivate/', VendorStaffDeactivateActionView.as_view(), name='vendor-staff-deactivate'),
+    path('v1/vendor/staff/<int:pk>/restore/', VendorStaffRestoreActionView.as_view(), name='vendor-staff-restore'),
+
+    path('v1/college-admin/vendors/', CollegeAdminVendorDeactivationView.as_view(), name='college-admin-vendor-deactivation-list'),
+    path('v1/college-admin/vendors/<int:pk>/deactivate/', CollegeAdminVendorDeactivateActionView.as_view(), name='college-admin-vendor-deactivate'),
+    path('v1/college-admin/vendors/<int:pk>/restore/', CollegeAdminVendorRestoreActionView.as_view(), name='college-admin-vendor-restore'),
+
+    path('v1/super-admin/college-admins/', SuperAdminCollegeAdminDeactivationView.as_view(), name='super-admin-college-admin-deactivation-list'),
+    path('v1/super-admin/college-admins/<int:pk>/deactivate/', SuperAdminCollegeAdminDeactivateActionView.as_view(), name='super-admin-college-admin-deactivate'),
+    path('v1/super-admin/college-admins/<int:pk>/restore/', SuperAdminCollegeAdminRestoreActionView.as_view(), name='super-admin-college-admin-restore'),
+
+    path('v1/staff/deactivate/', StaffSelfDeactivateView.as_view(), name='staff-self-deactivate'),
 ]

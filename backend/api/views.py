@@ -20,7 +20,7 @@ from api.serializers import (
     StaffProfileSerializer
 )
 from api.permissions import IsSuperAdmin, IsCollegeAdmin, IsVendor
-from api.services import ApprovalService
+from api.services import ApprovalService, AccountDeactivationService
 
 User = get_user_model()
 
@@ -331,8 +331,127 @@ class StaffDashboardStatsView(APIView):
             return Response({"detail": "Not a Staff user"}, status=status.HTTP_403_FORBIDDEN)
         vendor_profile = request.user.staff_profile.vendor
         stats = {
-            "vendor_shop_name": vendor_profile.restaurant.name if hasattr(vendor_profile, 'restaurant') else "Stall",
+            "vendor_shop_name": vendor_profile.restaurant.restaurant_name if hasattr(vendor_profile, 'restaurant') else "Stall",
             "preparing_orders": 0,
             "ready_orders": 0
         }
         return Response(stats)
+
+# -----------------
+# Account Deactivation & Restoration views
+# -----------------
+
+# Vendor Staff Management (List, Deactivate, Restore)
+class VendorStaffDeactivationView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsVendor]
+
+    def get(self, request):
+        vendor_profile = request.user.vendor_profile
+        # List both active and inactive staff under this vendor
+        staff_qs = StaffProfile.objects.filter(vendor=vendor_profile).order_by('-created_at')
+        serializer = StaffProfileSerializer(staff_qs, many=True)
+        return Response(serializer.data)
+
+class VendorStaffDeactivateActionView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsVendor]
+
+    def patch(self, request, pk):
+        try:
+            vendor_profile = request.user.vendor_profile
+            staff = StaffProfile.objects.get(pk=pk, vendor=vendor_profile)
+            AccountDeactivationService.deactivate_user_account(staff.user, actioned_by=request.user)
+            return Response({"success": True, "message": "Staff account deactivated successfully."})
+        except StaffProfile.DoesNotExist:
+            return Response({"detail": "Staff profile not found"}, status=status.HTTP_444_NOT_FOUND)
+
+class VendorStaffRestoreActionView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsVendor]
+
+    def patch(self, request, pk):
+        try:
+            vendor_profile = request.user.vendor_profile
+            staff = StaffProfile.objects.get(pk=pk, vendor=vendor_profile)
+            AccountDeactivationService.restore_user_account(staff.user, actioned_by=request.user)
+            return Response({"success": True, "message": "Staff account restored successfully."})
+        except StaffProfile.DoesNotExist:
+            return Response({"detail": "Staff profile not found"}, status=status.HTTP_444_NOT_FOUND)
+
+
+# College Admin Vendor Management (List, Deactivate, Restore)
+class CollegeAdminVendorDeactivationView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsCollegeAdmin]
+
+    def get(self, request):
+        college = request.user.college_admin_profile.college
+        # List vendors registered in this college
+        vendor_qs = VendorProfile.objects.filter(college=college).order_by('-created_at')
+        serializer = VendorProfileSerializer(vendor_qs, many=True)
+        return Response(serializer.data)
+
+class CollegeAdminVendorDeactivateActionView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsCollegeAdmin]
+
+    def patch(self, request, pk):
+        try:
+            college = request.user.college_admin_profile.college
+            vendor = VendorProfile.objects.get(pk=pk, college=college)
+            AccountDeactivationService.deactivate_vendor(vendor, actioned_by=request.user)
+            return Response({"success": True, "message": "Vendor and linking accounts deactivated successfully."})
+        except VendorProfile.DoesNotExist:
+            return Response({"detail": "Vendor profile not found"}, status=status.HTTP_444_NOT_FOUND)
+
+class CollegeAdminVendorRestoreActionView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsCollegeAdmin]
+
+    def patch(self, request, pk):
+        try:
+            college = request.user.college_admin_profile.college
+            vendor = VendorProfile.objects.get(pk=pk, college=college)
+            AccountDeactivationService.restore_vendor(vendor, actioned_by=request.user)
+            return Response({"success": True, "message": "Vendor restored successfully."})
+        except VendorProfile.DoesNotExist:
+            return Response({"detail": "Vendor profile not found"}, status=status.HTTP_444_NOT_FOUND)
+
+
+# Super Admin College Admin Management (List, Deactivate, Restore)
+class SuperAdminCollegeAdminDeactivationView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
+
+    def get(self, request):
+        ca_qs = CollegeAdminProfile.objects.all().order_by('-created_at')
+        serializer = CollegeAdminProfileSerializer(ca_qs, many=True)
+        return Response(serializer.data)
+
+class SuperAdminCollegeAdminDeactivateActionView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
+
+    def patch(self, request, pk):
+        try:
+            ca = CollegeAdminProfile.objects.get(pk=pk)
+            AccountDeactivationService.deactivate_user_account(ca.user, actioned_by=request.user)
+            return Response({"success": True, "message": "College Admin account deactivated successfully."})
+        except CollegeAdminProfile.DoesNotExist:
+            return Response({"detail": "College Admin profile not found"}, status=status.HTTP_444_NOT_FOUND)
+
+class SuperAdminCollegeAdminRestoreActionView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
+
+    def patch(self, request, pk):
+        try:
+            ca = CollegeAdminProfile.objects.get(pk=pk)
+            AccountDeactivationService.restore_user_account(ca.user, actioned_by=request.user)
+            return Response({"success": True, "message": "College Admin account restored successfully."})
+        except CollegeAdminProfile.DoesNotExist:
+            return Response({"detail": "College Admin profile not found"}, status=status.HTTP_444_NOT_FOUND)
+
+
+# Staff Self Deactivation
+class StaffSelfDeactivateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request):
+        if request.user.role != Role.STAFF:
+            return Response({"detail": "Not a Staff user"}, status=status.HTTP_403_FORBIDDEN)
+        AccountDeactivationService.deactivate_user_account(request.user, actioned_by=request.user, remarks="Staff self-deactivation.")
+        return Response({"success": True, "message": "Your account has been deactivated."})
+
