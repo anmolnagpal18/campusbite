@@ -66,9 +66,11 @@ export const SuperAdminDashboard = () => {
     setLoadingAdminsList(true);
     try {
       const res = await deactivationService.getCollegeAdminsList();
-      // Filter out PENDING admins
-      const approvedAdmins = res.filter(admin => admin.status === 'APPROVED');
-      setActiveAdminsList(approvedAdmins);
+      if (res && res.success && res.data) {
+        // Filter out PENDING admins
+        const approvedAdmins = res.data.filter(admin => admin.status === 'APPROVED');
+        setActiveAdminsList(approvedAdmins);
+      }
     } catch (err) {
       toast.error('Failed to load college admin list.');
     } finally {

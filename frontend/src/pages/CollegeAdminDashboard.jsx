@@ -66,9 +66,11 @@ export const CollegeAdminDashboard = () => {
     setLoadingVendorsList(true);
     try {
       const res = await deactivationService.getVendorsList();
-      // Filter out any status that is PENDING (only show APPROVED/REJECTED vendors here)
-      const approvedVendors = res.filter(v => v.status === 'APPROVED');
-      setActiveVendorsList(approvedVendors);
+      if (res && res.success && res.data) {
+        // Filter out any status that is PENDING (only show APPROVED/REJECTED vendors here)
+        const approvedVendors = res.data.filter(v => v.status === 'APPROVED');
+        setActiveVendorsList(approvedVendors);
+      }
     } catch (err) {
       toast.error('Failed to load vendors list.');
     } finally {

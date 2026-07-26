@@ -66,9 +66,11 @@ export const VendorDashboard = () => {
     setLoadingStaffList(true);
     try {
       const res = await deactivationService.getStaffList();
-      // Filter out any status that is PENDING (only show APPROVED/REJECTED staff here)
-      const approvedStaff = res.filter(s => s.status === 'APPROVED');
-      setActiveStaffList(approvedStaff);
+      if (res && res.success && res.data) {
+        // Filter out any status that is PENDING (only show APPROVED/REJECTED staff here)
+        const approvedStaff = res.data.filter(s => s.status === 'APPROVED');
+        setActiveStaffList(approvedStaff);
+      }
     } catch (err) {
       toast.error('Failed to load staff list.');
     } finally {
