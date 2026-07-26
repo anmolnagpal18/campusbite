@@ -22,6 +22,9 @@ urlpatterns = [
     # Include Chat app URLs
     path('v1/chat/', include('chat.urls')),
 
+    # Include Ordering app URLs
+    path('v1/', include('ordering.urls')),
+
     # Helper lists
     path('v1/colleges/', CollegeListView.as_view(), name='colleges-list'),
     path('v1/vendors/', VendorListView.as_view(), name='vendors-list'),
@@ -54,10 +57,9 @@ urlpatterns = [
     path('v1/staff/<int:id>/reject/', RejectStaffView.as_view(), name='reject-staff'),
 
     # Dashboard Statistics
-    path('v1/dashboard/super-admin/', SuperAdminDashboardStatsView.as_view(), name='super-admin-stats'),
-    path('v1/dashboard/college-admin/', CollegeAdminDashboardStatsView.as_view(), name='college-admin-stats'),
-    path('v1/dashboard/vendor/', VendorDashboardStatsView.as_view(), name='vendor-stats'),
     path('v1/dashboard/staff/', StaffDashboardStatsView.as_view(), name='staff-stats'),
+    path('v1/dashboard/', include('dashboard.urls')),
+    path('v1/reports/', include('reports.urls')),
 
     # Deactivations
     path('v1/vendor/staff/', VendorStaffDeactivationView.as_view(), name='vendor-staff-deactivation-list'),

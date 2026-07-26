@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
-  LayoutDashboard, Users, LogOut, Menu, X, Building, Store, Shield, ChefHat, MessageSquare
+  LayoutDashboard, Users, LogOut, Menu, X, Building, Store, Shield, ChefHat, MessageSquare, ShoppingBag, Bell,
+  ShoppingCart, ClipboardList, QrCode, User as UserIcon, BarChart2
 } from 'lucide-react';
 import ROUTES from '../routes/constants';
 import chatService from '../services/chat';
+import NotificationBell from '../components/common/NotificationBell';
+import orderingService from '../services/ordering';
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
@@ -13,6 +16,7 @@ const DashboardLayout = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     if (!user || user.role === 'USER') return;
@@ -30,6 +34,25 @@ const DashboardLayout = () => {
 
     fetchUnread();
     const interval = setInterval(fetchUnread, 5000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || user.role !== 'USER') return;
+
+    const fetchCartCount = async () => {
+      try {
+        const res = await orderingService.getCart();
+        if (res && res.success && res.data && res.data.items) {
+          setCartCount(res.data.items.length);
+        }
+      } catch (err) {
+        console.error('Failed to load cart items count', err);
+      }
+    };
+
+    fetchCartCount();
+    const interval = setInterval(fetchCartCount, 7000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -64,16 +87,20 @@ const DashboardLayout = () => {
       case 'SUPER_ADMIN':
         return [
           { name: 'Dashboard', path: ROUTES.SUPER_ADMIN_DASHBOARD, icon: <LayoutDashboard className="h-5 w-5" /> },
+          { name: 'Platform Analytics', path: ROUTES.SUPER_ADMIN_ANALYTICS, icon: <BarChart2 className="h-5 w-5" /> },
           { name: 'Messages', path: ROUTES.MESSAGES, icon: <MessageSquare className="h-5 w-5" /> },
         ];
       case 'COLLEGE_ADMIN':
         return [
           { name: 'Dashboard', path: ROUTES.COLLEGE_ADMIN_DASHBOARD, icon: <LayoutDashboard className="h-5 w-5" /> },
+          { name: 'Restaurant Analytics', path: ROUTES.COLLEGE_ADMIN_ANALYTICS, icon: <BarChart2 className="h-5 w-5" /> },
           { name: 'Messages', path: ROUTES.MESSAGES, icon: <MessageSquare className="h-5 w-5" /> },
         ];
       case 'VENDOR':
         return [
           { name: 'Dashboard', path: ROUTES.VENDOR_DASHBOARD, icon: <LayoutDashboard className="h-5 w-5" /> },
+          { name: 'Orders', path: ROUTES.ORDERS, icon: <ClipboardList className="h-5 w-5" /> },
+          { name: 'QR Scanner', path: ROUTES.QR_SCANNER, icon: <QrCode className="h-5 w-5" /> },
           { name: 'My Shop', path: ROUTES.MY_SHOP, icon: <Store className="h-5 w-5" /> },
           { name: 'Menu Management', path: ROUTES.MENU_MANAGEMENT, icon: <ChefHat className="h-5 w-5" /> },
           { name: 'Messages', path: ROUTES.MESSAGES, icon: <MessageSquare className="h-5 w-5" /> },
@@ -81,11 +108,18 @@ const DashboardLayout = () => {
       case 'STAFF':
         return [
           { name: 'Dashboard', path: ROUTES.STAFF_DASHBOARD, icon: <LayoutDashboard className="h-5 w-5" /> },
+          { name: 'Orders', path: ROUTES.ORDERS, icon: <ClipboardList className="h-5 w-5" /> },
+          { name: 'QR Scanner', path: ROUTES.QR_SCANNER, icon: <QrCode className="h-5 w-5" /> },
           { name: 'Messages', path: ROUTES.MESSAGES, icon: <MessageSquare className="h-5 w-5" /> },
         ];
       case 'USER':
         return [
           { name: 'Dashboard', path: ROUTES.USER_DASHBOARD, icon: <LayoutDashboard className="h-5 w-5" /> },
+          { name: 'Browse Food', path: ROUTES.BROWSE_FOOD, icon: <ShoppingBag className="h-5 w-5" /> },
+          { name: 'Cart', path: ROUTES.CART, icon: <ShoppingCart className="h-5 w-5" /> },
+          { name: 'My Orders', path: ROUTES.ORDERS, icon: <ClipboardList className="h-5 w-5" /> },
+          { name: 'Notifications', path: ROUTES.NOTIFICATIONS, icon: <Bell className="h-5 w-5" /> },
+          { name: 'Profile', path: ROUTES.PROFILE, icon: <UserIcon className="h-5 w-5" /> },
         ];
       default:
         return [];
@@ -156,6 +190,11 @@ const DashboardLayout = () => {
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
+                {link.name === 'Cart' && cartCount > 0 && (
+                  <span className="ml-auto bg-purple-500 text-white font-bold text-[10px] px-2 py-0.5 rounded-full min-w-5 text-center leading-none">
+                    {cartCount}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -187,6 +226,7 @@ const DashboardLayout = () => {
           </div>
           
           <div className="flex items-center gap-4">
+            <NotificationBell />
             <div className="h-8 w-[1px] bg-white/10 hidden md:block"></div>
             <div className="hidden md:flex items-center gap-2">
               <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold tracking-wide uppercase">

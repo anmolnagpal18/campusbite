@@ -5,8 +5,8 @@ __pycache__/
 *.env
 .env
 db.sqlite3
-/media
-/static
+media/
+static/
 .venv/
 env/
 venv/

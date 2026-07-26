@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import dashboardService from '../services/dashboard';
 import deactivationService from '../services/deactivation';
+import orderingService from '../services/ordering';
 import { useAuth } from '../contexts/AuthContext';
 import ROUTES from '../routes/constants';
 
@@ -20,6 +21,13 @@ export const StaffDashboard = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
 
+  const [orderStats, setOrderStats] = useState({
+    pending: 0,
+    preparing: 0,
+    ready: 0,
+    completed: 0
+  });
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -33,7 +41,24 @@ export const StaffDashboard = () => {
         setLoading(false);
       }
     };
+    const fetchOrdersForStats = async () => {
+      try {
+        const res = await orderingService.getOrders();
+        if (res && res.success && res.data) {
+          const orders = Array.isArray(res.data) ? res.data : (res.data.results || []);
+          const pending = orders.filter(o => o.status === 'PENDING').length;
+          const preparing = orders.filter(o => o.status === 'PREPARING').length;
+          const ready = orders.filter(o => o.status === 'READY').length;
+          const completed = orders.filter(o => o.status === 'COMPLETED').length;
+          setOrderStats({ pending, preparing, ready, completed });
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
     fetchStats();
+    fetchOrdersForStats();
   }, []);
 
   const handleDeactivate = async () => {
@@ -58,15 +83,25 @@ export const StaffDashboard = () => {
         description="Welcome to your workspace. Manage food preparation and order queue."
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
-          title="Orders Preparing" 
-          value={loading ? '...' : stats?.preparing_orders} 
+          title="Pending Approval" 
+          value={loading ? '...' : orderStats.pending} 
+          icon={<ChefHat className="h-6 w-6 text-purple-400" />} 
+        />
+        <StatCard 
+          title="Preparing Queue" 
+          value={loading ? '...' : orderStats.preparing} 
           icon={<ChefHat className="h-6 w-6 text-amber-400" />} 
         />
         <StatCard 
-          title="Orders Ready" 
-          value={loading ? '...' : stats?.ready_orders} 
+          title="Ready for Pickup" 
+          value={loading ? '...' : orderStats.ready} 
+          icon={<ShoppingBag className="h-6 w-6 text-indigo-400" />} 
+        />
+        <StatCard 
+          title="Completed Today" 
+          value={loading ? '...' : orderStats.completed} 
           icon={<ShoppingBag className="h-6 w-6 text-emerald-400" />} 
         />
       </div>

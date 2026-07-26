@@ -1,6 +1,7 @@
 from django.db import transaction
 from core.enums import ApprovalStatus, ShopStatus
 from accounts.models import ApprovalLog
+from dashboard.services import invalidate_dashboard_caches
 
 class ApprovalService:
     @staticmethod
@@ -21,8 +22,9 @@ class ApprovalService:
                 action=ApprovalStatus.APPROVED,
                 remarks=remarks
             )
+            invalidate_dashboard_caches()
             return profile
-
+            
     @staticmethod
     def reject_profile(profile, approved_by=None, remarks=None):
         with transaction.atomic():
@@ -36,6 +38,7 @@ class ApprovalService:
                 action=ApprovalStatus.REJECTED,
                 remarks=remarks
             )
+            invalidate_dashboard_caches()
             return profile
 
 class AccountDeactivationService:
@@ -66,6 +69,7 @@ class AccountDeactivationService:
                 action="DEACTIVATE",
                 remarks=remarks or "Vendor deactivated. Restaurant closed and staff members disabled."
             )
+            invalidate_dashboard_caches()
             return vendor_profile
 
     @staticmethod
@@ -88,6 +92,7 @@ class AccountDeactivationService:
                 action="RESTORE",
                 remarks=remarks or "Vendor restored. Staff members re-enabled."
             )
+            invalidate_dashboard_caches()
             return vendor_profile
 
     @staticmethod
@@ -103,6 +108,7 @@ class AccountDeactivationService:
                 action="DEACTIVATE",
                 remarks=remarks or "User account deactivated."
             )
+            invalidate_dashboard_caches()
             return user
 
     @staticmethod
@@ -118,5 +124,6 @@ class AccountDeactivationService:
                 action="RESTORE",
                 remarks=remarks or "User account restored."
             )
+            invalidate_dashboard_caches()
             return user
 

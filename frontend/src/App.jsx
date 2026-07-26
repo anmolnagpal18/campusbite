@@ -15,11 +15,21 @@ import UserDashboard from './pages/UserDashboard';
 import VendorDashboard from './pages/VendorDashboard';
 import StaffDashboard from './pages/StaffDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import SuperAdminAnalytics from './pages/SuperAdminAnalytics';
 import CollegeAdminDashboard from './pages/CollegeAdminDashboard';
+import CollegeAdminAnalytics from './pages/CollegeAdminAnalytics';
 import NotFound from './pages/NotFound';
 import MyShop from './pages/MyShop';
 import MenuManagement from './pages/MenuManagement';
 import Messages from './pages/Messages';
+import BrowseFood from './pages/BrowseFood';
+import RestaurantDetails from './pages/RestaurantDetails';
+import Cart from './pages/Cart';
+import OrderSuccess from './pages/OrderSuccess';
+import Orders from './pages/Orders';
+import Notifications from './pages/Notifications';
+import QRScanner from './pages/QRScanner';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -98,6 +108,14 @@ function App() {
               } 
             />
             <Route 
+              path={ROUTES.COLLEGE_ADMIN_ANALYTICS} 
+              element={
+                <ProtectedRoute allowedRoles={['COLLEGE_ADMIN']}>
+                  <CollegeAdminAnalytics />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path={ROUTES.SUPER_ADMIN_DASHBOARD} 
               element={
                 <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
@@ -106,10 +124,82 @@ function App() {
               } 
             />
             <Route 
+              path={ROUTES.SUPER_ADMIN_ANALYTICS} 
+              element={
+                <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                  <SuperAdminAnalytics />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path={ROUTES.MESSAGES} 
               element={
                 <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'VENDOR', 'STAFF']}>
                   <Messages />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path={ROUTES.BROWSE_FOOD} 
+              element={
+                <ProtectedRoute allowedRoles={['USER']}>
+                  <BrowseFood />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path={ROUTES.RESTAURANT_DETAILS} 
+              element={
+                <ProtectedRoute allowedRoles={['USER']}>
+                  <RestaurantDetails />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path={ROUTES.CART} 
+              element={
+                <ProtectedRoute allowedRoles={['USER']}>
+                  <Cart />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path={ROUTES.ORDER_SUCCESS} 
+              element={
+                <ProtectedRoute allowedRoles={['USER']}>
+                  <OrderSuccess />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path={ROUTES.ORDERS} 
+              element={
+                <ProtectedRoute allowedRoles={['USER', 'VENDOR', 'STAFF']}>
+                  <Orders />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path={ROUTES.NOTIFICATIONS} 
+              element={
+                <ProtectedRoute allowedRoles={['USER', 'VENDOR', 'STAFF', 'COLLEGE_ADMIN', 'SUPER_ADMIN']}>
+                  <Notifications />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path={ROUTES.QR_SCANNER} 
+              element={
+                <ProtectedRoute allowedRoles={['VENDOR', 'STAFF']}>
+                  <QRScanner />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path={ROUTES.PROFILE} 
+              element={
+                <ProtectedRoute allowedRoles={['USER', 'VENDOR', 'STAFF', 'COLLEGE_ADMIN', 'SUPER_ADMIN']}>
+                  <Profile />
                 </ProtectedRoute>
               } 
             />

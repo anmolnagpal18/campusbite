@@ -1,18 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import dashboardService from '../services/dashboard';
 import staffService from '../services/staff';
 import deactivationService from '../services/deactivation';
 import chatService from '../services/chat';
+import orderingService from '../services/ordering';
 import ROUTES from '../routes/constants';
 
 import { PageHeader } from '../components/common/PageHeader';
 import { StatCard } from '../components/common/StatCard';
 import { DataTable } from '../components/common/DataTable';
-import { Button } from '../components/common/Button';
+import Button from '../components/common/Button';
+import Card from '../components/common/Card';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
-import { ChefHat, ShieldAlert, Check, X, Calendar, MessageSquare, ShieldCheck } from 'lucide-react';
-import { RevenueChart, OrderVolumeChart } from '../components/common/DashboardCharts';
+import {
+  ChefHat, ShieldAlert, Check, X, Calendar, MessageSquare, ShieldCheck,
+  TrendingUp, Download, Printer, RefreshCw, BarChart2, ShieldAlert as WarningIcon
+} from 'lucide-react';
+import { RevenueAreaChart, StatusPieChart, FoodsBarChart } from '../components/common/DashboardCharts';
 import toast from 'react-hot-toast';
 
 export const VendorDashboard = () => {
@@ -25,23 +30,35 @@ export const VendorDashboard = () => {
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingTable, setLoadingTable] = useState(true);
 
+  // Time filters
+  const [rangePreset, setRangePreset] = useState('7d');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [lastUpdated, setLastUpdated] = useState('');
+
   // Active Staff States
   const [activeStaffList, setActiveStaffList] = useState([]);
   const [loadingStaffList, setLoadingStaffList] = useState(true);
+  const [staffSearch, setStaffSearch] = useState('');
 
   // Modals
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedStaffId, setSelectedStaffId] = useState(null);
   const [actionType, setActionType] = useState('approve'); // approve, reject, deactivate, restore
 
-  const fetchStats = async () => {
+  const refreshIntervalRef = useRef(null);
+
+  const fetchStats = async (preset = rangePreset, start = startDate, end = endDate) => {
+    setLoadingStats(true);
     try {
-      const res = await dashboardService.getVendorStats();
-      if (res.success) {
-        setStats(res.data);
+      const res = await dashboardService.getVendorStats(preset, start, end);
+      if (res) {
+        setStats(res);
+        setLastUpdated(new Date().toLocaleTimeString());
       }
     } catch (err) {
       console.error(err);
+      toast.error('Failed to load dashboard statistics.');
     } finally {
       setLoadingStats(false);
     }
@@ -67,7 +84,6 @@ export const VendorDashboard = () => {
     try {
       const res = await deactivationService.getStaffList();
       if (res && res.success && res.data) {
-        // Filter out any status that is PENDING (only show APPROVED/REJECTED staff here)
         const approvedStaff = res.data.filter(s => s.status === 'APPROVED');
         setActiveStaffList(approvedStaff);
       }
@@ -78,10 +94,22 @@ export const VendorDashboard = () => {
     }
   };
 
+  // Setup auto-refresh every 30 seconds
   useEffect(() => {
-    fetchStats();
+    fetchStats(rangePreset, startDate, endDate);
     fetchActiveStaffList();
-  }, []);
+    fetchPendingStaff();
+
+    refreshIntervalRef.current = setInterval(() => {
+      fetchStats(rangePreset, startDate, endDate);
+    }, 30000); // 30 seconds
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, [rangePreset, startDate, endDate]);
 
   useEffect(() => {
     fetchPendingStaff();
@@ -135,6 +163,18 @@ export const VendorDashboard = () => {
     }
   };
 
+  const handleExport = async (format) => {
+    try {
+      toast.loading(`Preparing ${format.toUpperCase()} report...`);
+      await dashboardService.downloadReport('vendor', format, rangePreset, startDate, endDate);
+      toast.dismiss();
+      toast.success(`${format.toUpperCase()} report generated successfully!`);
+    } catch (err) {
+      toast.dismiss();
+      toast.error('Failed to export report.');
+    }
+  };
+
   const pendingHeaders = [
     { label: 'Email' },
     { label: 'Stall Linking' },
@@ -149,95 +189,252 @@ export const VendorDashboard = () => {
     { label: 'Actions', className: 'text-right' }
   ];
 
+  const summary = stats?.summary || {};
+
   return (
     <div className="space-y-8">
-      <PageHeader 
-        title="Vendor Control Panel" 
-        description="Monitor staff, track orders, and view stall statistics."
-      />
+      {/* Dashboard Filter Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#121020]/60 p-6 rounded-3xl border border-white/5 backdrop-blur-md">
+        <PageHeader 
+          title="Vendor Control Panel" 
+          description="Monitor staff, track orders, and view stall statistics."
+        />
+        
+        {/* Controls block */}
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-[10px] font-bold text-gray-400">Last updated: {lastUpdated || '...'}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchStats(rangePreset, startDate, endDate)}
+            icon={<RefreshCw className={`h-3.5 w-3.5 ${loadingStats ? 'animate-spin' : ''}`} />}
+          >
+            Refresh
+          </Button>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <select
+            value={rangePreset}
+            onChange={(e) => setRangePreset(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-gray-200 outline-none focus:border-purple-500 transition-colors"
+          >
+            <option value="today" className="bg-[#121020]">Today</option>
+            <option value="yesterday" className="bg-[#121020]">Yesterday</option>
+            <option value="7d" className="bg-[#121020]">Last 7 Days</option>
+            <option value="30d" className="bg-[#121020]">Last 30 Days</option>
+            <option value="90d" className="bg-[#121020]">Last 90 Days</option>
+            <option value="this_month" className="bg-[#121020]">This Month</option>
+            <option value="last_month" className="bg-[#121020]">Last Month</option>
+            <option value="custom" className="bg-[#121020]">Custom Range</option>
+          </select>
+
+          {rangePreset === 'custom' && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-xl px-3 py-1 text-xs text-gray-200 outline-none"
+              />
+              <span className="text-gray-400 text-xs">to</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-xl px-3 py-1 text-xs text-gray-200 outline-none"
+              />
+            </div>
+          )}
+
+          {/* Export Report Actions */}
+          <div className="flex items-center gap-1.5 ml-2 border-l border-white/10 pl-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport('csv')}
+              icon={<Download className="h-3.5 w-3.5" />}
+            >
+              CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport('excel')}
+              icon={<BarChart2 className="h-3.5 w-3.5" />}
+            >
+              Excel
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport('print')}
+              icon={<Printer className="h-3.5 w-3.5" />}
+            >
+              Print
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* KPI Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
           title="Today's Orders" 
-          value={loadingStats ? '...' : stats?.today_orders || 0} 
+          value={loadingStats ? '...' : summary.today_orders ?? 0} 
           icon={<ChefHat className="h-6 w-6 text-purple-400" />} 
         />
         <StatCard 
           title="Today's Revenue" 
-          value={loadingStats ? '...' : `$${stats?.today_revenue?.toFixed(2)}`} 
+          value={loadingStats ? '...' : `₹${summary.today_revenue?.toFixed(2) || '0.00'}`} 
           icon={<ChefHat className="h-6 w-6 text-emerald-400" />} 
         />
         <StatCard 
-          title="Total Categories" 
-          value={loadingStats ? '...' : stats?.total_categories} 
-          icon={<ChefHat className="h-6 w-6 text-purple-400" />} 
+          title="Average Order Value" 
+          value={loadingStats ? '...' : `₹${summary.average_order_value?.toFixed(2) || '0.00'}`} 
+          icon={<ChefHat className="h-6 w-6 text-indigo-400" />} 
         />
         <StatCard 
-          title="Total Food Items" 
-          value={loadingStats ? '...' : stats?.total_items} 
-          icon={<ChefHat className="h-6 w-6 text-blue-400" />} 
-        />
-        <StatCard 
-          title="Available Items" 
-          value={loadingStats ? '...' : stats?.available_items} 
-          icon={<ChefHat className="h-6 w-6 text-emerald-400" />} 
-        />
-        <StatCard 
-          title="Staff Pending" 
-          value={loadingStats ? '...' : stats?.pending_staff} 
-          icon={<ShieldAlert className={`h-6 w-6 text-rose-400 ${stats?.pending_staff > 0 ? 'animate-pulse' : ''}`} />} 
+          title="Average Prep Time" 
+          value={loadingStats ? '...' : `${summary.average_preparation_time || 0} mins`} 
+          icon={<ChefHat className="h-6 w-6 text-amber-400" />} 
         />
       </div>
 
-      {/* Dashboard Charts */}
+      {/* Order Status KPI Cards Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="p-4 rounded-3xl bg-[#121020]/60 border border-white/5 text-center">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Pending</span>
+          <span className="text-xl font-black text-purple-400">{summary.pending_orders ?? 0}</span>
+        </div>
+        <div className="p-4 rounded-3xl bg-[#121020]/60 border border-white/5 text-center">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Preparing</span>
+          <span className="text-xl font-black text-amber-400">{summary.preparing_orders ?? 0}</span>
+        </div>
+        <div className="p-4 rounded-3xl bg-[#121020]/60 border border-white/5 text-center">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Ready</span>
+          <span className="text-xl font-black text-indigo-400">{summary.ready_orders ?? 0}</span>
+        </div>
+        <div className="p-4 rounded-3xl bg-[#121020]/60 border border-white/5 text-center">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Completed</span>
+          <span className="text-xl font-black text-emerald-400">{summary.completed_orders ?? 0}</span>
+        </div>
+        <div className="p-4 rounded-3xl bg-[#121020]/60 border border-white/5 text-center">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Cancelled</span>
+          <span className="text-xl font-black text-rose-400">{summary.cancelled_orders ?? 0}</span>
+        </div>
+        <div className="p-4 rounded-3xl bg-[#121020]/60 border border-white/5 text-center">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Staff Pending</span>
+          <span className="text-xl font-black text-blue-400">{summary.pending_staff ?? 0}</span>
+        </div>
+      </div>
+
+      {/* Recharts Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RevenueChart revenue={stats?.today_revenue || 0} />
-        <OrderVolumeChart 
-          preparing={0} 
-          ready={0} 
-        />
+        <Card className="p-6 space-y-4">
+          <div>
+            <h4 className="text-sm font-bold text-gray-200">Revenue Trend (Range)</h4>
+            <p className="text-xs text-gray-400">Total revenue generated by date</p>
+          </div>
+          <RevenueAreaChart data={stats?.charts?.revenue} yKey="Revenue" />
+        </Card>
+
+        <Card className="p-6 space-y-4">
+          <div>
+            <h4 className="text-sm font-bold text-gray-200">Orders Status Distribution</h4>
+            <p className="text-xs text-gray-400">Total orders split by workflow status</p>
+          </div>
+          <StatusPieChart data={stats?.charts?.orders_status} />
+        </Card>
       </div>
 
-      {/* Advanced Analytics Card */}
+      {/* Advanced Canteen Analytics Block */}
       <div className="glass-card p-6 rounded-3xl border border-white/5 shadow-2xl space-y-6">
         <div>
-          <h2 className="text-lg font-bold text-gray-100">Advanced Menu & Order Analytics</h2>
-          <p className="text-xs text-gray-400">Deep-dive stats relating to food categories, items stock, and sales metrics.</p>
+          <h2 className="text-lg font-bold text-gray-100 font-extrabold uppercase tracking-wider text-purple-400">Advanced Kitchen & Menu Analytics</h2>
+          <p className="text-xs text-gray-400">Deep-dive stats relating to food categories, preparation milestones, and item sales.</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
           <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 flex flex-col justify-between h-24">
-            <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block">Category with Most Items</span>
-            <span className="text-lg font-extrabold text-gray-200">{loadingStats ? '...' : stats?.category_most_items || 'None'}</span>
+            <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block">Top Selling Category</span>
+            <span className="text-sm font-extrabold text-gray-200">{summary.top_selling_category || 'None'}</span>
           </div>
           <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 flex flex-col justify-between h-24">
-            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest block">Low Stock Items</span>
-            <span className="text-lg font-extrabold text-gray-200">{loadingStats ? '...' : stats?.low_stock_items_count} items</span>
+            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest block">Peak Demand Hour</span>
+            <span className="text-sm font-extrabold text-gray-200">{summary.peak_order_hour || 'N/A'}</span>
           </div>
           <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 flex flex-col justify-between h-24">
-            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block">Total Active Menu Items</span>
-            <span className="text-lg font-extrabold text-gray-200">{loadingStats ? '...' : stats?.total_active_menu_items} active</span>
+            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block">Fastest Prep Time</span>
+            <span className="text-sm font-extrabold text-gray-200">{summary.fastest_prep_time || 0} mins</span>
           </div>
           <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 flex flex-col justify-between h-24">
-            <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest block">Best Selling Category</span>
-            <span className="text-xs text-gray-500 font-semibold">{loadingStats ? '...' : stats?.best_selling_category}</span>
+            <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest block">Slowest Prep Time</span>
+            <span className="text-sm font-extrabold text-gray-200">{summary.slowest_prep_time || 0} mins</span>
           </div>
           <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 flex flex-col justify-between h-24">
-            <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest block">Average Order Value</span>
-            <span className="text-xs text-gray-500 font-semibold">{loadingStats ? '...' : stats?.avg_order_value}</span>
-          </div>
-          <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 flex flex-col justify-between h-24">
-            <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block">Most Ordered Item</span>
-            <span className="text-xs text-gray-500 font-semibold">{loadingStats ? '...' : stats?.most_ordered_item}</span>
-          </div>
-          <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 flex flex-col justify-between h-24">
-            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest block">Least Ordered Item</span>
-            <span className="text-xs text-gray-500 font-semibold">{loadingStats ? '...' : stats?.least_ordered_item}</span>
+            <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest block">Repeat Customers</span>
+            <span className="text-sm font-extrabold text-gray-200">{summary.repeat_customers || 0} repeaters</span>
           </div>
         </div>
       </div>
 
+      {/* Top Selling Foods Bar Chart */}
+      <Card className="p-6 space-y-4">
+        <div>
+          <h4 className="text-sm font-bold text-gray-200">Top Selling Foods (Range)</h4>
+          <p className="text-xs text-gray-400">Total orders count per menu item</p>
+        </div>
+        <FoodsBarChart data={stats?.charts?.top_selling} />
+      </Card>
+
+      {/* Tables block */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Selling Items Table */}
+        <div className="glass-card p-6 rounded-3xl border border-white/5 shadow-2xl space-y-4">
+          <h3 className="text-sm font-black uppercase text-purple-400">Top 5 Selling Items</h3>
+          <DataTable
+            headers={[{ label: 'Food' }, { label: 'Orders' }, { label: 'Quantity' }, { label: 'Revenue' }]}
+            data={stats?.tables?.top_selling_items?.slice(0, 5) || []}
+            loading={loadingStats}
+            emptyMessage="No orders placed in this period."
+            renderRow={(item, idx) => (
+              <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">{item.food_name}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.orders}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-extrabold">{item.quantity}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-purple-400 font-bold">₹{item.revenue?.toFixed(2)}</td>
+              </tr>
+            )}
+          />
+        </div>
+
+        {/* Low Stock Items Table */}
+        <div className="glass-card p-6 rounded-3xl border border-white/5 shadow-2xl space-y-4">
+          <h3 className="text-sm font-black uppercase text-rose-400 flex items-center gap-1">
+            <WarningIcon className="h-4 w-4" />
+            Inventory Low Stock Warnings
+          </h3>
+          <DataTable
+            headers={[{ label: 'Food Item' }, { label: 'Stock Qty' }, { label: 'Availability' }]}
+            data={stats?.tables?.low_stock_items || []}
+            loading={loadingStats}
+            emptyMessage="All items are sufficiently stocked."
+            renderRow={(item, idx) => (
+              <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">{item.item_name}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-rose-400 font-extrabold">{item.quantity} units</td>
+                <td className="px-6 py-4 whitespace-nowrap text-xs">
+                  <span className={`px-2.5 py-0.5 rounded-full font-bold uppercase text-[9px] ${item.availability === 'AVAILABLE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                    {item.availability}
+                  </span>
+                </td>
+              </tr>
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Stall Staff Management Card */}
       <div className="grid grid-cols-1 gap-6">
-        {/* Stall Staff Management Card */}
         <div className="glass-card p-6 rounded-3xl border border-white/5 shadow-2xl">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 rounded-xl">
@@ -251,9 +448,15 @@ export const VendorDashboard = () => {
 
           <DataTable
             headers={staffHeaders}
-            data={activeStaffList}
+            data={activeStaffList.filter(staff =>
+              (staff.user_email || '').toLowerCase().includes(staffSearch.toLowerCase()) ||
+              (staff.vendor_shop || '').toLowerCase().includes(staffSearch.toLowerCase())
+            )}
             loading={loadingStaffList}
-            emptyMessage="No staff members registered yet."
+            emptyMessage="No matching staff members found."
+            searchVal={staffSearch}
+            onSearchChange={setStaffSearch}
+            searchPlaceholder="Search staff by email or shop..."
             renderRow={(staff) => (
               <tr key={staff.id} className="hover:bg-white/[0.02] transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">{staff.user_email}</td>

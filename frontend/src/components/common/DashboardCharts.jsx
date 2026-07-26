@@ -1,116 +1,178 @@
 import React from 'react';
-import { LineChart, BarChart2, TrendingUp } from 'lucide-react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend, BarChart, Bar, LineChart, Line
+} from 'recharts';
 import Card from './Card';
-import EmptyState from './EmptyState';
+import { HelpCircle } from 'lucide-react';
 
-export const RevenueChart = ({ revenue = 0 }) => {
-  const hasData = revenue > 0;
+const COLORS = ['#818cf8', '#fbbf24', '#34d399', '#f87171', '#a78bfa', '#22d3ee', '#e879f9'];
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const rawData = payload[0].payload;
+    let title = label;
+    if (rawData.date) {
+      const dateObj = new Date(rawData.date);
+      if (!isNaN(dateObj.getTime())) {
+        title = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+      }
+    }
+    return (
+      <div className="bg-[#121020]/90 backdrop-blur-md border border-white/10 p-3 rounded-2xl shadow-xl text-xs space-y-1">
+        <p className="font-bold text-purple-300">{title}</p>
+        {payload.map((p, idx) => (
+          <p key={idx} style={{ color: p.color || p.fill }} className="font-extrabold">
+            {p.name}: {typeof p.value === 'number' && p.name.toLowerCase().includes('revenue') ? `₹${p.value.toFixed(2)}` : p.value}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+// 1. Area Chart (Revenue Trend)
+export const RevenueAreaChart = ({ data = [], height = 300, yKey = "Revenue" }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed border-white/5 rounded-3xl bg-white/[0.005] h-[300px]">
+        <HelpCircle className="h-8 w-8 text-gray-600 mb-2" />
+        <span className="text-xs font-bold text-gray-400">No revenue data available yet</span>
+        <p className="text-[10px] text-gray-500 mt-1">Analytics will automatically appear after your first completed order.</p>
+      </div>
+    );
+  }
+
+  const formatTick = (value) => {
+    const item = data.find(d => d.date === value || d.day_name === value);
+    if (item && item.date && item.day_name) {
+      const dayNum = item.date.split('-')[2];
+      return `${item.day_name} ${dayNum}`;
+    }
+    return value;
+  };
 
   return (
-    <Card className="flex flex-col h-80 justify-between">
-      <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
-        <div>
-          <h4 className="text-sm font-bold text-gray-200">Revenue Performance</h4>
-          <p className="text-xs text-gray-400">Daily earnings & metrics</p>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-          <TrendingUp className="h-3 w-3" />
-          +0.0%
-        </div>
-      </div>
-
-      <div className="flex-1 flex items-center justify-center relative">
-        {!hasData ? (
-          <EmptyState
-            title="No revenue data available yet"
-            message="Revenue details will appear here once customers start placing orders."
-            icon={<LineChart className="h-10 w-10 text-gray-500" />}
+    <div style={{ width: '100%', height }}>
+      <ResponsiveContainer>
+        <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <defs>
+            <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4}/>
+              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" />
+          <XAxis 
+            dataKey={data[0]?.date ? "date" : "day_name"} 
+            stroke="#9ca3af" 
+            fontSize={10} 
+            tickLine={false} 
+            tickFormatter={formatTick}
           />
-        ) : (
-          <div className="w-full h-full flex flex-col justify-end p-2">
-            <svg className="w-full h-32 text-purple-500" viewBox="0 0 100 30" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="rgba(168, 85, 247, 0.4)" />
-                  <stop offset="100%" stopColor="rgba(168, 85, 247, 0.0)" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M0,30 Q25,10 50,20 T100,5 L100,30 L0,30 Z"
-                fill="url(#gradient)"
-              />
-              <path
-                d="M0,30 Q25,10 50,20 T100,5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-            </svg>
-            <div className="flex justify-between text-[10px] text-gray-500 mt-2">
-              <span>9:00 AM</span>
-              <span>12:00 PM</span>
-              <span>3:00 PM</span>
-              <span>6:00 PM</span>
-              <span>9:00 PM</span>
-            </div>
-          </div>
-        )}
-      </div>
-    </Card>
+          <YAxis stroke="#9ca3af" fontSize={10} tickLine={false} />
+          <Tooltip content={<CustomTooltip />} />
+          <Area type="monotone" dataKey={yKey} stroke="#a78bfa" strokeWidth={2} fillOpacity={1} fill="url(#colorRev)" />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
   );
 };
 
-export const OrderVolumeChart = ({ preparing = 0, ready = 0 }) => {
-  const total = preparing + ready;
-  const hasData = total > 0;
+// 2. Bar Chart (Top Selling Foods)
+export const FoodsBarChart = ({ data = [], height = 300, yKey = "Orders" }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed border-white/5 rounded-3xl bg-white/[0.005] h-[300px]">
+        <HelpCircle className="h-8 w-8 text-gray-600 mb-2" />
+        <span className="text-xs font-bold text-gray-400">No popular food items yet</span>
+        <p className="text-[10px] text-gray-500 mt-1">Popular foods will appear here after orders are completed.</p>
+      </div>
+    );
+  }
 
   return (
-    <Card className="flex flex-col h-80 justify-between">
-      <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
-        <div>
-          <h4 className="text-sm font-bold text-gray-200">Active Order Volume</h4>
-          <p className="text-xs text-gray-400">Real-time status breakdown</p>
-        </div>
-        <span className="text-xs font-semibold text-gray-400">Total: {total}</span>
-      </div>
+    <div style={{ width: '100%', height }}>
+      <ResponsiveContainer>
+        <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" />
+          <XAxis dataKey="name" stroke="#9ca3af" fontSize={9} tickLine={false} />
+          <YAxis stroke="#9ca3af" fontSize={10} tickLine={false} />
+          <Tooltip content={<CustomTooltip />} />
+          <Bar dataKey={yKey} fill="#8b5cf6" radius={[4, 4, 0, 0]}>
+            {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
 
-      <div className="flex-1 flex items-center justify-center">
-        {!hasData ? (
-          <EmptyState
-            title="No active orders"
-            message="Active orders will automatically display here once customers place them."
-            icon={<BarChart2 className="h-10 w-10 text-gray-500" />}
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col justify-around px-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-medium">
-                <span className="text-amber-400">Preparing ({preparing})</span>
-                <span className="text-gray-400">{Math.round((preparing / total) * 100)}%</span>
-              </div>
-              <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500"
-                  style={{ width: `${(preparing / total) * 100}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-medium">
-                <span className="text-emerald-400">Ready for Pickup ({ready})</span>
-                <span className="text-gray-400">{Math.round((ready / total) * 100)}%</span>
-              </div>
-              <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500"
-                  style={{ width: `${(ready / total) * 100}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
+// 3. Status Pie Chart
+export const StatusPieChart = ({ data = [], height = 300 }) => {
+  const hasValues = data.some(d => d.value > 0);
+  
+  if (!data || data.length === 0 || !hasValues) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed border-white/5 rounded-3xl bg-white/[0.005] h-[300px]">
+        <HelpCircle className="h-8 w-8 text-gray-600 mb-2" />
+        <span className="text-xs font-bold text-gray-400">No orders data yet</span>
+        <p className="text-[10px] text-gray-500 mt-1">Order status breakdowns appear here after orders are received.</p>
       </div>
-    </Card>
+    );
+  }
+
+  return (
+    <div style={{ width: '100%', height }} className="flex flex-col justify-center">
+      <ResponsiveContainer>
+        <PieChart>
+          <Pie
+            data={data.filter(d => d.value > 0)}
+            cx="50%"
+            cy="50%"
+            innerRadius={60}
+            outerRadius={80}
+            paddingAngle={5}
+            dataKey="value"
+          >
+            {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip content={<CustomTooltip />} />
+          <Legend formatter={(value) => <span className="text-xs font-semibold text-gray-400">{value}</span>} />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+// 4. Line Chart (Revenue Trend 30 Days)
+export const RevenueLineChart = ({ data = [], height = 300, yKey = "Revenue" }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed border-white/5 rounded-3xl bg-white/[0.005] h-[300px]">
+        <HelpCircle className="h-8 w-8 text-gray-600 mb-2" />
+        <span className="text-xs font-bold text-gray-400">No trend data available</span>
+        <p className="text-[10px] text-gray-500 mt-1">Trend lines appear after completed transactions are recorded.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ width: '100%', height }}>
+      <ResponsiveContainer>
+        <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" />
+          <XAxis dataKey="date" stroke="#9ca3af" fontSize={9} tickLine={false} />
+          <YAxis stroke="#9ca3af" fontSize={10} tickLine={false} />
+          <Tooltip content={<CustomTooltip />} />
+          <Line type="monotone" dataKey={yKey} stroke="#34d399" strokeWidth={2} dot={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 };
