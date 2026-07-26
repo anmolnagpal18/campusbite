@@ -409,8 +409,14 @@ def sync_callback_query_handler(chat_id, data):
 
         try:
             order = bot_services.checkout_bot(session.user, order_type, pickup_time)
-            qr_data = order.qr_uuid
-            scan_payload = f"ORDER:{order.order_number}:{qr_data}"
+            
+            from ordering.qr import generate_qr_data
+            import json
+            qr_info = generate_qr_data(order)
+            scan_payload = json.dumps({
+                "order_uuid": qr_info["order_uuid"],
+                "encrypted_token": qr_info["encrypted_token"]
+            })
             qr_bytes = generate_qr_image_bytes(scan_payload)
             
             # Reset session
@@ -437,7 +443,14 @@ def sync_callback_query_handler(chat_id, data):
         order_id = int(data.split("_")[1])
         try:
             o = Order.objects.get(id=order_id, user=session.user)
-            scan_payload = f"ORDER:{o.order_number}:{o.qr_uuid}"
+            
+            from ordering.qr import generate_qr_data
+            import json
+            qr_info = generate_qr_data(o)
+            scan_payload = json.dumps({
+                "order_uuid": qr_info["order_uuid"],
+                "encrypted_token": qr_info["encrypted_token"]
+            })
             qr_bytes = generate_qr_image_bytes(scan_payload)
             return {
                 "action": "photo",
