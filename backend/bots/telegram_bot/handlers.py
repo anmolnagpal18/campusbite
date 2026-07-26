@@ -149,8 +149,7 @@ def sync_message_handler(chat_id, text):
         
         # Create user account and profile
         from django.db import transaction
-        from authentication.models import UserProfile
-        from accounts.models import Role
+        from accounts.models import Role, UserProfile
         
         try:
             with transaction.atomic():
@@ -260,7 +259,10 @@ def sync_message_handler(chat_id, text):
             f"🔗 *Telegram Link:* Linked ✅\n"
             f"🆔 *Chat ID:* `{chat_id}`\n"
         )
-        return {"action": "reply", "text": profile_info, "keyboard": None}
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🚪 Logout / Unlink Account", callback_data="auth_logout")]
+        ])
+        return {"action": "reply", "text": profile_info, "keyboard": keyboard}
 
     elif text == "❓ Help":
         help_text = (
@@ -299,6 +301,22 @@ def sync_callback_query_handler(chat_id, data):
         return {
             "action": "edit",
             "text": "📝 Please enter a valid email address to register a new account:",
+            "keyboard": None
+        }
+
+    elif data == "auth_logout":
+        user = session.user
+        if user:
+            user.telegram_chat_id = None
+            user.telegram_linked = False
+            user.save()
+        session.user = None
+        session.state = BotStates.START
+        session.context_data = {}
+        session.save()
+        return {
+            "action": "edit",
+            "text": "🚪 *Logout Successful!*\n\nYou have been logged out and unlinked from this Telegram session.\nType /start to link or register again.",
             "keyboard": None
         }
 
